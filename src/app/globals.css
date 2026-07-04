@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: theme("colors.paper.soft");
+  color: theme("colors.ink.DEFAULT");
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Focus ring — restrained, accent-tinted */
+*:focus-visible {
+  outline: 2px solid theme("colors.accent.ring");
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Editorial selection */
+::selection {
+  background: theme("colors.accent.soft");
+  color: theme("colors.accent.hover");
+}
+
+@layer components {
+  .u-container {
+    @apply mx-auto w-full max-w-editorial px-6 sm:px-8;
+  }
+
+  /* Tracking-tight editorial display headings */
+  .u-display {
+    @apply font-semibold tracking-[-0.02em] text-ink;
+  }
+
+  /* Small caps eyebrow label */
+  .u-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted;
+  }
+
+  .u-hairline {
+    @apply border-line;
+  }
+
+  /* Card surface */
+  .u-card {
+    @apply rounded-lg border border-line bg-paper shadow-card;
+  }
+}
+
+/* Thin, quiet scrollbars for editor rails */
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: theme("colors.line.strong");
+  border-radius: 999px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes dckf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: dckf-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dckf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: dckf-spin 0.8s linear infinite;
+}

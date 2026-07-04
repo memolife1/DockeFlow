@@ -1,0 +1,113 @@
+// Core domain entities for DeckeFlow.
+// These mirror the intended persistence schema so the localStorage-backed
+// store can later be swapped for a real database without UI changes.
+
+export type PresentationMode = "topic" | "content";
+
+export type PresentationStatus =
+  | "draft"
+  | "generating"
+  | "ready"
+  | "error";
+
+export type Tone =
+  | "professional"
+  | "confident"
+  | "consultative"
+  | "friendly"
+  | "visionary";
+
+export type LayoutType =
+  | "title"
+  | "agenda"
+  | "section"
+  | "content"
+  | "two-column"
+  | "quote"
+  | "closing";
+
+export type TemplateSourceType = "built-in" | "uploaded";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  company?: string;
+  createdAt: string;
+}
+
+export interface Presentation {
+  id: string;
+  userId: string;
+  title: string;
+  subtitle: string;
+  mode: PresentationMode;
+  audience: string;
+  goal: string;
+  tone: Tone;
+  templateId: string;
+  status: PresentationStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Slide {
+  id: string;
+  presentationId: string;
+  orderIndex: number;
+  title: string;
+  content: string[]; // bullet points / body lines
+  speakerNotes: string;
+  layoutType: LayoutType;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  sourceType: TemplateSourceType;
+  // Design tokens the template contributes to the deck theme.
+  theme: TemplateTheme;
+  createdAt: string;
+}
+
+export interface TemplateTheme {
+  accent: string;
+  surface: string;
+  ink: string;
+  fontFamily: "sans" | "serif";
+  // A short label describing the visual character (shown in the picker).
+  character: string;
+}
+
+export interface UploadedStyleReference {
+  id: string;
+  userId: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string; // object URL / data ref (mocked)
+  extractedAccent: string;
+  createdAt: string;
+}
+
+export interface GenerationJob {
+  id: string;
+  presentationId: string;
+  status: "queued" | "running" | "done" | "error";
+  inputType: PresentationMode;
+  createdAt: string;
+}
+
+export interface ExportJob {
+  id: string;
+  presentationId: string;
+  status: "queued" | "processing" | "ready" | "error";
+  format: "pdf" | "pptx" | "link";
+  createdAt: string;
+}
+
+export interface DeckBundle {
+  presentation: Presentation;
+  slides: Slide[];
+}
