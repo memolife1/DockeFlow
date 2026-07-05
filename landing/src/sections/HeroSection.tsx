@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { PillButton } from "../components/PillButton";
 import { DiagonalCut } from "../components/DiagonalCut";
@@ -13,13 +14,25 @@ const rise = (delay: number) => ({
   transition: { delay, duration: 0.7, ease: [0.25, 0.1, 0.25, 1] as const },
 });
 
+// Headline split into words so each can slide up and resolve from blur.
+const HEADLINE: { t: string; cobalt?: boolean }[] = [
+  { t: "Turn" },
+  { t: "rough" },
+  { t: "notes" },
+  { t: "into" },
+  { t: "decks" },
+  { t: "that" },
+  { t: "look", cobalt: true },
+  { t: "designed.", cobalt: true },
+];
+
 export function HeroSection() {
   return (
-    <section className="relative flex min-h-screen flex-col px-5 sm:px-8">
-      {/* Navbar */}
+    <section className="relative flex min-h-screen flex-col overflow-hidden">
+      {/* Navbar (unchanged) */}
       <motion.nav
         {...rise(0)}
-        className="mx-auto flex w-full max-w-6xl items-center justify-between py-6"
+        className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8"
       >
         <span className="font-display text-lg font-bold tracking-tight text-ink">
           Decke<span className="text-cobalt">Flow</span>
@@ -57,110 +70,235 @@ export function HeroSection() {
       </motion.nav>
 
       {/* Body */}
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center py-8">
-        <motion.h1
-          {...rise(0.15)}
-          className="font-display font-bold uppercase leading-[0.95] text-ink"
-          style={{ fontSize: "clamp(2.5rem, 8vw, 5.5rem)", fontWeight: 700 }}
-        >
-          Turn rough notes into decks that{" "}
-          <span className="text-cobalt">look designed.</span>
-        </motion.h1>
+      <div className="flex flex-1 flex-col justify-center gap-4 py-4 sm:gap-5">
+        {/* Headline — word-by-word slide + blur-to-focus */}
+        <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+          <h1
+            className="flex flex-wrap font-display font-bold uppercase leading-[0.88] text-ink"
+            style={{ fontSize: "clamp(2.75rem, 9vw, 6.5rem)", columnGap: "0.26em" }}
+          >
+            {HEADLINE.map((w, i) => (
+              <motion.span
+                key={i}
+                className={w.cobalt ? "text-cobalt" : undefined}
+                style={{ display: "inline-block" }}
+                initial={{ y: 20, opacity: 0, filter: "blur(4px)" }}
+                animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+                transition={{
+                  delay: 0.1 + i * 0.08,
+                  duration: 0.6,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                {w.t}
+              </motion.span>
+            ))}
+          </h1>
+        </div>
 
-        {/* Hero visual: transformation split with the diagonal-cut signature */}
-        <motion.div {...rise(0.3)} className="mt-10 sm:mt-12">
+        {/* Hero visual: the diagonal cut is now the full-width main gesture */}
+        <motion.div {...rise(0.75)} className="w-full">
           <HeroSplit />
         </motion.div>
 
-        <motion.p
-          {...rise(0.45)}
-          className="mt-9 max-w-md text-base text-ink/70 sm:text-lg"
-        >
-          Paste your notes, pick a template, get a deck in minutes.
-        </motion.p>
+        {/* Supporting line + CTA (copy unchanged) */}
+        <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+          <motion.p
+            {...rise(0.9)}
+            className="max-w-md text-base text-ink/70 sm:text-lg"
+          >
+            Paste your notes, pick a template, get a deck in minutes.
+          </motion.p>
 
-        <motion.div {...rise(0.55)} className="mt-6">
-          <PillButton href="#" variant="primary">
-            Create a presentation
-            <ArrowRight size={15} strokeWidth={2.5} />
-          </PillButton>
-        </motion.div>
+          <motion.div {...rise(1.0)} className="mt-6">
+            <MagneticCTA />
+          </motion.div>
+        </div>
       </div>
     </section>
   );
 }
 
+/**
+ * Full-bleed transformation split. The Cobalt/Coral diagonal cut runs
+ * edge-to-edge across the viewport; the two mockups sit on the page
+ * background on either side of it — no containing card.
+ */
 function HeroSplit() {
   return (
-    <div className="relative grid grid-cols-1 gap-4 overflow-hidden rounded-3xl border border-ink/10 bg-white p-4 shadow-[0_20px_60px_-30px_rgba(23,23,23,0.35)] sm:grid-cols-2 sm:gap-0 sm:p-0">
-      {/* Left — rough notes */}
-      <div className="flex flex-col rounded-2xl bg-paper p-6 sm:rounded-none sm:p-8">
-        <MockLabel>Rough notes</MockLabel>
-        <div className="mt-5 flex flex-col gap-3">
-          {[88, 64, 95, 47, 79, 58].map((w, i) => (
-            <div
-              key={i}
-              className="rounded-full bg-ink/15"
-              style={{
-                width: `${w}%`,
-                height: 7,
-                marginLeft: i % 2 ? 10 : 0,
-                opacity: 0.5 + (i % 3) * 0.15,
-              }}
-            />
-          ))}
-          <div className="mt-1 h-7 w-24 rounded-md border border-dashed border-ink/25" />
+    <div
+      className="relative w-full"
+      style={{ height: "clamp(240px, 30vh, 360px)" }}
+    >
+      {/* The gesture: an edge-to-edge diagonal slash. */}
+      <div className="pointer-events-none absolute inset-0 flex items-center overflow-hidden">
+        <div
+          className="relative w-[130%] -translate-x-[6%]"
+          style={{ transform: "rotate(-9deg)" }}
+        >
+          <DiagonalCut
+            angle={5}
+            className="w-full"
+            style={{ height: "clamp(78px, 12vh, 118px)" }}
+          />
         </div>
       </div>
 
-      {/* Center diagonal-cut divider (signature) */}
-      <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-[64px] -translate-x-1/2 sm:block">
-        <DiagonalCut
-          angle={14}
-          className="h-full w-full"
-          style={{ height: "100%" }}
-        />
+      {/* Mockups, aligned to the content column but floating on the page. */}
+      <div className="relative mx-auto h-full max-w-6xl px-5 sm:px-8">
+        <RoughNotes />
+        <FinishedDeck />
       </div>
-      {/* Mobile divider */}
-      <div className="relative h-6 w-full sm:hidden">
-        <DiagonalCut angle={40} className="h-full w-full" style={{ height: "100%" }} />
-      </div>
+    </div>
+  );
+}
 
-      {/* Right — finished deck (extra left pad on desktop to clear the divider) */}
-      <div className="flex flex-col rounded-2xl bg-white p-6 sm:rounded-none sm:p-8 sm:pl-14">
-        <MockLabel>Finished deck</MockLabel>
-        <div className="mt-5 flex flex-1 flex-col">
-          <div className="h-4 w-2/3 rounded-md bg-cobalt" />
-          <div className="mt-2 h-2.5 w-2/5 rounded-md bg-ink/15" />
-          <div className="mt-5 flex flex-1 gap-4">
-            <div className="flex flex-1 flex-col gap-2.5 pt-1">
-              {[95, 80, 88, 70].map((w, i) => (
-                <div
-                  key={i}
-                  className="rounded-full bg-ink/10"
-                  style={{ width: `${w}%`, height: 6 }}
-                />
-              ))}
-            </div>
-            <div className="flex flex-1 items-end gap-1.5 rounded-lg border border-ink/10 bg-paper p-3">
-              {[45, 70, 55, 90, 75].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t-sm bg-cobalt"
-                  style={{ height: `${h}%`, opacity: 0.4 + i / 10 }}
-                />
-              ))}
-            </div>
-          </div>
+function RoughNotes() {
+  // Uneven lines in varying ink tones; one line tilted; caret on the last.
+  const lines = [
+    { w: 82, o: 0.34 },
+    { w: 61, o: 0.2, rot: -1 },
+    { w: 92, o: 0.4 },
+    { w: 48, o: 0.16 },
+    { w: 70, o: 0.28 },
+  ];
+  return (
+    <div className="absolute left-5 top-[2%] w-[46%] max-w-[380px] sm:left-8 sm:top-[6%]">
+      <MockLabel>Rough notes</MockLabel>
+      <div className="mt-5 flex flex-col gap-3.5">
+        {lines.map((l, i) => (
+          <div
+            key={i}
+            className="rounded-full"
+            style={{
+              width: `${l.w}%`,
+              height: 9,
+              background: `rgba(23,23,23,${l.o})`,
+              transform: l.rot ? `rotate(${l.rot}deg)` : undefined,
+            }}
+          />
+        ))}
+        {/* last line + blinking caret */}
+        <div className="flex items-center gap-1.5">
+          <div
+            className="rounded-full"
+            style={{ width: "38%", height: 9, background: "rgba(23,23,23,0.24)" }}
+          />
+          <span
+            className="dckf-cursor inline-block rounded-[1px] bg-ink"
+            style={{ width: 2, height: 16 }}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function MockLabel({ children }: { children: string }) {
+function FinishedDeck() {
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/45">
+    <div className="absolute bottom-[2%] right-5 w-[50%] max-w-[440px] sm:bottom-[4%] sm:right-8">
+      <div className="mb-3">
+        <MockLabel>Finished deck</MockLabel>
+      </div>
+      {/* Continuous, very subtle float — a small sign of life. */}
+      <motion.div
+        animate={{ y: [-4, 4] }}
+        transition={{
+          duration: 2,
+          ease: "easeInOut",
+          repeat: Infinity,
+          repeatType: "reverse",
+        }}
+        className="rounded-2xl bg-white p-6 sm:p-7"
+        style={{ boxShadow: "0 20px 40px rgba(0,0,0,0.08)" }}
+      >
+        {/* bold Cobalt headline bar */}
+        <div className="h-4 w-2/3 rounded-md bg-cobalt sm:h-5" />
+        <div className="mt-3 h-2.5 w-2/5 rounded-md bg-ink/15" />
+
+        <div className="mt-6 flex gap-5">
+          {/* body lines */}
+          <div className="flex flex-1 flex-col gap-3 pt-1">
+            {[96, 82, 68].map((w, i) => (
+              <div
+                key={i}
+                className="rounded-full bg-ink/10"
+                style={{ width: `${w}%`, height: 7 }}
+              />
+            ))}
+          </div>
+          {/* bar chart — Cobalt-tint gradient bars */}
+          <div className="flex flex-1 items-end gap-2">
+            {[46, 72, 58, 92, 76].map((h, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-t-[3px]"
+                style={{
+                  height: `${h}%`,
+                  minHeight: 10,
+                  background:
+                    "linear-gradient(180deg, #2B4EFF 0%, rgba(43,78,255,0.35) 100%)",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Primary CTA that leans toward the cursor when it's within ~80px, using a
+ * spring so it eases in and releases smoothly. Copy is unchanged.
+ */
+function MagneticCTA() {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 160, damping: 14, mass: 0.1 });
+  const springY = useSpring(y, { stiffness: 160, damping: 14, mass: 0.1 });
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const radius = Math.max(r.width, r.height) / 2 + 80;
+      if (Math.hypot(dx, dy) < radius) {
+        x.set(dx * 0.35);
+        y.set(dy * 0.35);
+      } else {
+        x.set(0);
+        y.set(0);
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [x, y]);
+
+  return (
+    <motion.div
+      ref={ref}
+      style={{ x: springX, y: springY, display: "inline-block" }}
+    >
+      <PillButton href="#" variant="primary">
+        Create a presentation
+        <ArrowRight size={15} strokeWidth={2.5} />
+      </PillButton>
+    </motion.div>
+  );
+}
+
+function MockLabel({ children }: { children: string }) {
+  // Small chip backing keeps the label legible whether it sits on the paper
+  // background or on the Cobalt diagonal band.
+  return (
+    <span className="inline-block rounded-full bg-paper/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/55 backdrop-blur-sm">
       {children}
     </span>
   );
