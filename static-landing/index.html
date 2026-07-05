@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DeckeFlow | AI-Powered Presentation Engine for Professionals</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#0052ff",
+                        "on-primary": "#ffffff",
+                        "surface": "#faf8ff",
+                        "surface-dim": "#d2d9f4",
+                        "surface-bright": "#faf8ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-container": "#eef0ff",
+                        "surface-container-high": "#e8eaff",
+                        "surface-container-highest": "#e2e5ff",
+                        "on-surface": "#1a1b21",
+                        "on-surface-variant": "#44474e",
+                        "outline": "#74777f",
+                        "outline-variant": "#c4c6cf",
+                        "secondary": "#595d71",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#dee1f9",
+                        "on-secondary-container": "#161b2c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "2xl": "48px",
+                        "lg": "24px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "3xl": "64px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "margin-mobile": "20px",
+                        "xs": "4px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "sans": ["Plus Jakarta Sans", "sans-serif"],
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .hero-gradient { background: radial-gradient(circle at top right, #eef0ff 0%, #faf8ff 100%); }
+        .editorial-shadow { box-shadow: 0 20px 40px -15px rgba(0, 82, 255, 0.1); }
+        .slide-glow { filter: drop-shadow(0 10px 30px rgba(0, 82, 255, 0.15)); }
+    </style>
+</head>
+<body class="text-on-surface bg-surface selection:bg-primary selection:text-white overflow-x-hidden">
+<!-- Navigation -->
+<header class="w-full top-0 bg-surface/80 backdrop-blur-md flex justify-between items-center px-margin-mobile md:px-margin-desktop py-md sticky z-50 border-b border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<div class="bg-primary p-1 rounded-lg">
+<span class="material-symbols-outlined text-white text-[24px]" data-icon="auto_awesome_motion">auto_awesome_motion</span>
+</div>
+<span class="text-xl font-extrabold tracking-tight text-primary">DeckeFlow</span>
+</div>
+<div class="hidden md:flex items-center gap-xl text-label-md font-semibold text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#">Features</a>
+<a class="hover:text-primary transition-colors" href="#">Solutions</a>
+<a class="hover:text-primary transition-colors" href="#">Pricing</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-label-md font-bold text-on-surface-variant hover:text-primary px-md py-xs">Log in</button>
+<button class="bg-primary text-on-primary px-lg py-sm rounded-full text-label-md font-bold transition-all hover:shadow-lg active:scale-95">Get Started</button>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="hero-gradient pt-xl pb-3xl px-margin-mobile md:px-margin-desktop overflow-hidden">
+<div class="max-w-screen-xl mx-auto flex flex-col items-center text-center gap-xl">
+<div class="space-y-md max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+<span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                    The Future of Professional Slides
+                </span>
+<h1 class="text-4xl md:text-6xl font-extrabold text-on-surface tracking-tight leading-[1.1]">
+                    A smarter way to present <span class="text-primary">high-stakes ideas.</span>
+</h1>
+<p class="text-lg md:text-xl text-on-surface-variant leading-relaxed max-w-2xl mx-auto">
+                    Turn raw notes into executive-ready presentations. Engineered for sales leaders, consultants, and founders who demand precision.
+                </p>
+</div>
+<!-- Punchy CTA & Input Area -->
+<div class="w-full max-w-2xl bg-white p-2 rounded-2xl shadow-xl border border-outline-variant/50 flex flex-col sm:flex-row gap-2">
+<div class="flex-1 flex items-center px-4 py-3">
+<span class="material-symbols-outlined text-outline mr-3" data-icon="edit_note">edit_note</span>
+<input class="w-full border-none focus:ring-0 text-on-surface placeholder:text-outline/60 bg-transparent" placeholder="A pitch deck for a fintech startup..." type="text"/>
+</div>
+<button class="bg-primary text-white px-xl py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
+                    Generate Deck
+                    <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Hero Visual -->
+<div class="w-full max-w-5xl mt-xl relative">
+<div class="rounded-2xl overflow-hidden shadow-2xl border border-outline-variant/30 bg-surface-container slide-glow">
+<!-- IMAGE PLACEHOLDER — swap in real asset -->
+<div class="w-full aspect-[16/9] bg-surface-container-high border border-dashed border-outline-variant flex items-center justify-center text-center p-lg">
+<div class="flex flex-col items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[32px] text-outline" data-icon="image">image</span>
+<span class="text-sm font-semibold">Real product screenshot — Hero deck example</span>
+</div>
+</div>
+</div>
+<!-- Floating Detail Card -->
+<div class="absolute -bottom-6 -right-4 md:-right-12 bg-white p-lg rounded-xl shadow-2xl border border-outline-variant hidden sm:block max-w-[280px] text-left">
+<div class="flex items-center gap-sm mb-sm text-primary">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-bold text-sm uppercase">AI Insights</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Chart data extracted from your raw Q4 CRM exports and automatically visualized for clarity.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- "Upload Your Template" Core Differentiator -->
+<section class="py-3xl px-margin-mobile md:px-margin-desktop bg-surface-container-low">
+<div class="max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3xl items-center">
+<div class="space-y-xl">
+<div class="space-y-md">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold uppercase tracking-widest">
+<span class="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span>
+                        Coming soon
+                    </span>
+<h2 class="text-3xl md:text-5xl font-extrabold text-on-surface leading-tight">
+                        Your brand, <span class="text-primary italic">amplified.</span> Not replaced.
+                    </h2>
+<p class="text-lg text-on-surface-variant leading-relaxed">
+                        Unlike generic slide generators, DeckeFlow learns your visual DNA. Upload your existing master template or brand book, and we'll ensure every pixel aligns with your corporate identity.
+                    </p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-lg">
+<div class="flex gap-md">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+</div>
+<div>
+<h4 class="font-bold mb-1">Upload Master</h4>
+<p class="text-sm text-on-surface-variant">Drop your .pptx or .pdf brand guidelines.</p>
+</div>
+</div>
+<div class="flex gap-md">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+</div>
+<div>
+<h4 class="font-bold mb-1">DNA Extraction</h4>
+<p class="text-sm text-on-surface-variant">We map fonts, HEX colors, and layouts.</p>
+</div>
+</div>
+</div>
+<button class="border-2 border-primary text-primary px-xl py-md rounded-xl font-bold hover:bg-primary hover:text-white transition-all inline-flex items-center gap-2">
+                    Join the waitlist
+                    <span class="material-symbols-outlined text-[20px]" data-icon="schedule">schedule</span>
+</button>
+</div>
+<div class="relative">
+<div class="rounded-2xl overflow-hidden shadow-2xl bg-white p-2">
+<!-- IMAGE PLACEHOLDER — swap in real asset -->
+<div class="w-full aspect-[4/3] rounded-xl bg-surface-container-high border border-dashed border-outline-variant flex items-center justify-center text-center p-lg">
+<div class="flex flex-col items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[32px] text-outline" data-icon="image">image</span>
+<span class="text-sm font-semibold">Real product screenshot — Brand template example</span>
+</div>
+</div>
+</div>
+<div class="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+<div class="absolute -bottom-10 -right-10 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl -z-10"></div>
+</div>
+</div>
+</section>
+<!-- Professional Visuals Gallery -->
+<section class="py-3xl px-margin-mobile md:px-margin-desktop bg-white">
+<div class="max-w-screen-xl mx-auto">
+<div class="text-center mb-2xl space-y-md">
+<h2 class="text-3xl md:text-5xl font-extrabold text-on-surface">Precision for every professional.</h2>
+<p class="text-lg text-on-surface-variant max-w-2xl mx-auto">High-fidelity layouts tailored for the people who close the deals.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+<!-- Target Audience: Sales -->
+<div class="group flex flex-col gap-md">
+<div class="aspect-video rounded-xl overflow-hidden border border-outline-variant/30 shadow-lg transition-all group-hover:scale-[1.02] group-hover:shadow-xl">
+<!-- IMAGE PLACEHOLDER — swap in real asset -->
+<div class="w-full h-full bg-surface-container-high flex items-center justify-center text-center p-md">
+<div class="flex flex-col items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px] text-outline" data-icon="image">image</span>
+<span class="text-sm font-semibold px-2">Real product screenshot — Sales deck example</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<h3 class="text-xl font-bold">For Sales Leaders</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">Complex revenue data transformed into persuasive narratives in seconds.</p>
+</div>
+</div>
+<!-- Target Audience: Consultants -->
+<div class="group flex flex-col gap-md">
+<div class="aspect-video rounded-xl overflow-hidden border border-outline-variant/30 shadow-lg transition-all group-hover:scale-[1.02] group-hover:shadow-xl">
+<!-- IMAGE PLACEHOLDER — swap in real asset -->
+<div class="w-full h-full bg-surface-container-high flex items-center justify-center text-center p-md">
+<div class="flex flex-col items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px] text-outline" data-icon="image">image</span>
+<span class="text-sm font-semibold px-2">Real product screenshot — Consulting deck example</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<h3 class="text-xl font-bold">For Consultants</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">Logical, editorial structures that guide stakeholders through complex strategies.</p>
+</div>
+</div>
+<!-- Target Audience: Founders -->
+<div class="group flex flex-col gap-md">
+<div class="aspect-video rounded-xl overflow-hidden border border-outline-variant/30 shadow-lg transition-all group-hover:scale-[1.02] group-hover:shadow-xl">
+<!-- IMAGE PLACEHOLDER — swap in real asset -->
+<div class="w-full h-full bg-surface-container-high flex items-center justify-center text-center p-md">
+<div class="flex flex-col items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px] text-outline" data-icon="image">image</span>
+<span class="text-sm font-semibold px-2">Real product screenshot — Founder pitch example</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<h3 class="text-xl font-bold">For Startup Founders</h3>
+<p class="text-sm text-on-surface-variant leading-relaxed">Investor-ready pitch decks with cinematic impact and perfect brand compliance.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- High Impact CTA Section -->
+<section class="py-3xl px-margin-mobile md:px-margin-desktop">
+<div class="max-w-screen-xl mx-auto bg-primary rounded-[2.5rem] p-xl md:p-3xl text-center text-white relative overflow-hidden shadow-2xl">
+<!-- Decorative light patterns -->
+<div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent"></div>
+<div class="relative z-10 space-y-xl">
+<h2 class="text-3xl md:text-5xl font-extrabold leading-tight">Ready to elevate your <br/>presentation game?</h2>
+<p class="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto">Built for professionals who present for a living.</p>
+<div class="flex flex-col sm:flex-row justify-center gap-md">
+<button class="bg-white text-primary px-xl py-md rounded-full font-extrabold text-lg transition-all hover:scale-105 shadow-xl">Get Started for Free</button>
+<button class="bg-blue-700/50 backdrop-blur-md text-white border border-white/20 px-xl py-md rounded-full font-bold text-lg hover:bg-blue-700 transition-all">Book a Demo</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface py-3xl px-margin-mobile md:px-margin-desktop border-t border-outline-variant/30">
+<div class="max-w-screen-xl mx-auto">
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-xl mb-3xl">
+<div class="col-span-2">
+<div class="flex items-center gap-sm mb-lg">
+<div class="bg-primary p-1 rounded-md">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="auto_awesome_motion">auto_awesome_motion</span>
+</div>
+<span class="text-xl font-extrabold tracking-tight text-primary">DeckeFlow</span>
+</div>
+<p class="text-on-surface-variant text-sm leading-relaxed max-w-xs">The world's most advanced AI presentation engine for high-stakes professional use.</p>
+</div>
+<div>
+<h4 class="font-bold text-sm uppercase tracking-widest mb-lg">Product</h4>
+<ul class="space-y-md text-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">Features</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Integrations</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Enterprise</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-sm uppercase tracking-widest mb-lg">Resources</h4>
+<ul class="space-y-md text-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">Blog</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Case Studies</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Templates</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-sm uppercase tracking-widest mb-lg">Company</h4>
+<ul class="space-y-md text-sm text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">About</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Careers</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Contact</a></li>
+</ul>
+</div>
+</div>
+<div class="pt-xl border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-md text-xs text-outline font-semibold">
+<p>© 2026 DeckeFlow Inc. All rights reserved.</p>
+<div class="flex gap-xl">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Cookie Policy</a>
+</div>
+</div>
+</div>
+</footer>
+<!-- Floating Mobile CTA (Hidden on desktop) -->
+<div class="fixed bottom-6 left-margin-mobile right-margin-mobile z-50 sm:hidden">
+<button class="w-full bg-primary text-white py-4 rounded-full font-bold shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+        Get Started for Free
+        <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</body></html>
