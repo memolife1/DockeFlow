@@ -5,27 +5,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Warm neutral base (stone) + a single restrained rust accent.
+        // App design system. Cool neutral surfaces + the #0052ff primary.
+        // Every app screen (dashboard, settings, templates, wizard, editor,
+        // auth) styles through these tokens — the homepage uses a separate
+        // set (primary/surface/on-surface) and is unaffected.
         ink: {
-          DEFAULT: "#1c1917",
-          soft: "#44403c",
-          muted: "#78716c",
-          faint: "#a8a29e",
+          DEFAULT: "#1a1b21", // primary text
+          soft: "#44474e", // secondary / muted text
+          muted: "#6a6e79",
+          faint: "#a5a9b4",
         },
         paper: {
-          DEFAULT: "#ffffff",
-          soft: "#faf9f7",
-          sunk: "#f5f4f1",
+          DEFAULT: "#ffffff", // cards / sidebar (lowest surface)
+          soft: "#faf8ff", // main background
+          sunk: "#f2f3ff", // layered container (low)
         },
         line: {
-          DEFAULT: "#e7e5e4",
-          strong: "#d6d3d1",
+          DEFAULT: "#e4e6f5",
+          strong: "#c4c6cf",
         },
         accent: {
-          DEFAULT: "#c2410c",
-          hover: "#9a3412",
-          soft: "#fdf1ec",
-          ring: "#f3c9b6",
+          DEFAULT: "#0052ff",
+          hover: "#0041cc",
+          soft: "#e8eaff", // prominent tint (active states, badges)
+          ring: "#aab8ff",
         },
 
         // ---- Marketing landing (Stitch) palette. Additive; used only by the
@@ -74,11 +77,11 @@ const config: Config = {
         "margin-mobile": "20px",
         "margin-desktop": "64px",
       },
+      // Soft, primary-tinted shadows for a lifted, premium feel.
       boxShadow: {
-        card: "0 1px 2px rgba(28,25,23,0.04), 0 1px 3px rgba(28,25,23,0.06)",
-        raised:
-          "0 1px 2px rgba(28,25,23,0.05), 0 4px 12px rgba(28,25,23,0.08)",
-        pop: "0 8px 30px rgba(28,25,23,0.12)",
+        card: "0 1px 2px rgba(0,82,255,0.04), 0 4px 12px -6px rgba(0,82,255,0.10)",
+        raised: "0 8px 24px -12px rgba(0,82,255,0.18), 0 2px 6px -3px rgba(0,82,255,0.10)",
+        pop: "0 20px 40px -15px rgba(0,82,255,0.22)",
       },
       borderRadius: {
         DEFAULT: "8px",
