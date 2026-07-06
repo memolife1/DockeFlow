@@ -8,6 +8,8 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { IconDoc, IconDeck, IconCheck } from "@/components/ui/icons";
 import type { ExportJob } from "@/lib/types";
+import { exportDeckToPptx } from "@/lib/pptx";
+import { getTemplate, BUILT_IN_TEMPLATES } from "@/lib/templates";
 
 const FORMATS: {
   value: ExportJob["format"];
@@ -31,23 +33,37 @@ export function ExportDialog({
   presentationId: string;
   title: string;
 }) {
-  const { createExportJob } = useStore();
-  const [format, setFormat] = useState<ExportJob["format"]>("pdf");
-  const [state, setState] = useState<"idle" | "processing" | "ready">("idle");
+  const { createExportJob, getPresentation, slidesFor, templates } = useStore();
+  const [format, setFormat] = useState<ExportJob["format"]>("pptx");
+  const [state, setState] = useState<"idle" | "processing" | "ready" | "error">(
+    "idle",
+  );
 
   const run = async () => {
     setState("processing");
     createExportJob(presentationId, format);
     try {
-      await fetch("/api/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presentationId, format }),
-      });
+      if (format === "pptx") {
+        const pres = getPresentation(presentationId);
+        const slides = slidesFor(presentationId);
+        if (!pres || slides.length === 0) throw new Error("Nothing to export");
+        const uploaded = templates.filter((t) => t.sourceType === "uploaded");
+        const template =
+          getTemplate(pres.templateId, uploaded) ?? BUILT_IN_TEMPLATES[0];
+        // Builds a real .pptx (with native charts) and downloads it.
+        await exportDeckToPptx(pres, slides, template.theme);
+      } else {
+        // PDF / share-link remain placeholder flows in this MVP.
+        await fetch("/api/export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ presentationId, format }),
+        });
+      }
+      setState("ready");
     } catch {
-      /* mocked — ignore */
+      setState("error");
     }
-    setState("ready");
   };
 
   const close = () => {
@@ -86,11 +102,24 @@ export function ExportDialog({
             <IconCheck className="h-5 w-5" />
           </div>
           <p className="mt-3 text-sm font-medium text-ink">
-            Export prepared ({format.toUpperCase()})
+            {format === "pptx"
+              ? "Your presentation downloaded (.pptx)"
+              : `Export prepared (${format.toUpperCase()})`}
           </p>
           <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
-            Export is mocked in this MVP. In production this delivers a real
-            file — the rendering pipeline plugs in behind the same button.
+            {format === "pptx"
+              ? "An editable PowerPoint file with native charts on data slides. Check your downloads."
+              : "PDF and share links are placeholder flows in this MVP; PowerPoint export is fully functional."}
+          </p>
+        </div>
+      ) : state === "error" ? (
+        <div className="flex flex-col items-center py-4 text-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <IconDoc className="h-5 w-5" />
+          </div>
+          <p className="mt-3 text-sm font-medium text-ink">Export failed</p>
+          <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
+            Something went wrong building the file. Please try again.
           </p>
         </div>
       ) : (

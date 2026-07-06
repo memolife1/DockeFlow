@@ -28,6 +28,17 @@ export type LayoutType =
 
 export type TemplateSourceType = "built-in" | "uploaded";
 
+// Chart attached to a data-oriented slide. Rendered as a native, editable
+// chart object in PowerPoint export.
+export type ChartType = "bar" | "line" | "pie";
+
+export interface ChartSpec {
+  type: ChartType;
+  title?: string;
+  labels: string[]; // category axis / pie segment labels
+  series: { name: string; values: number[] }[]; // one series for pie
+}
+
 export interface User {
   id: string;
   name: string;
@@ -59,6 +70,7 @@ export interface Slide {
   content: string[]; // bullet points / body lines
   speakerNotes: string;
   layoutType: LayoutType;
+  chart?: ChartSpec; // present on data-oriented slides
 }
 
 export interface Template {

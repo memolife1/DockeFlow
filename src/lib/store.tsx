@@ -19,6 +19,14 @@ import type {
 } from "./types";
 import { nowIso, uid } from "./utils";
 import { BUILT_IN_TEMPLATES } from "./templates";
+import { supabase, isSupabaseConfigured } from "./supabase";
+import {
+  loadPresentationsRemote,
+  deletePresentationRemote,
+  savePresentationRemote,
+  type RemoteDeck,
+} from "./supabaseSync";
+import type { Session } from "@supabase/supabase-js";
 
 // ---------------------------------------------------------------------------
 // Persistence layer. Backed by localStorage today; the shape of `Db` is the
@@ -68,6 +76,23 @@ function loadDb(): Db {
 function saveDb(db: Db) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, JSON.stringify(db));
+}
+
+// Signature of a deck's persisted state — used to skip redundant remote saves.
+function deckSig(p: Presentation, slides: Slide[]): string {
+  return p.updatedAt + "::" + JSON.stringify(slides);
+}
+
+// Replace a user's decks in the local db with the set loaded from Supabase.
+function hydrateUserDecks(d: Db, userId: string, decks: RemoteDeck[]): Db {
+  const keepPres = d.presentations.filter((p) => p.userId !== userId);
+  const keepIds = new Set(keepPres.map((p) => p.id));
+  const keepSlides = d.slides.filter((s) => keepIds.has(s.presentationId));
+  return {
+    ...d,
+    presentations: [...keepPres, ...decks.map((x) => x.presentation)],
+    slides: [...keepSlides, ...decks.flatMap((x) => x.slides)],
+  };
 }
 
 function reindex(list: Slide[]): Slide[] {
@@ -130,21 +155,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const dbRef = useRef<Db>(db);
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
+  // Tracks the last state synced to Supabase per deck, so we don't re-upsert
+  // unchanged decks (or echo a just-loaded deck straight back).
+  const syncedRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     const loaded = loadDb();
     dbRef.current = loaded;
     setDb(loaded);
-    try {
-      const sid = window.localStorage.getItem(SESSION_KEY);
-      if (sid) {
-        const u = loaded.users.find((x) => x.id === sid);
-        if (u) setUser(u);
+    // With Supabase, the session drives the user and readiness (below).
+    if (!isSupabaseConfigured) {
+      try {
+        const sid = window.localStorage.getItem(SESSION_KEY);
+        if (sid) {
+          const u = loaded.users.find((x) => x.id === sid);
+          if (u) setUser(u);
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
+      setReady(true);
     }
-    setReady(true);
   }, []);
 
   // Apply an updater against the latest committed state, then persist.
@@ -155,6 +186,66 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     saveDb(next);
     return next;
   }, []);
+
+  // ---- Supabase session: drive the user + load their decks ----
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    let active = true;
+    const apply = async (session: Session | null) => {
+      if (!active) return;
+      const su = session?.user;
+      if (su) {
+        const u: User = {
+          id: su.id,
+          name:
+            (su.user_metadata?.name as string) ||
+            su.email?.split("@")[0] ||
+            "there",
+          email: su.email ?? "",
+          company: su.user_metadata?.company as string | undefined,
+          createdAt: su.created_at ?? nowIso(),
+        };
+        setUser(u);
+        const decks = await loadPresentationsRemote();
+        if (!active) return;
+        decks.forEach((x) =>
+          syncedRef.current.set(x.presentation.id, deckSig(x.presentation, x.slides)),
+        );
+        commit((d) => hydrateUserDecks(d, u.id, decks));
+      } else {
+        setUser(null);
+      }
+      setReady(true);
+    };
+    supabase.auth.getSession().then(({ data }) => apply(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
+      apply(session),
+    );
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [commit]);
+
+  // ---- Debounced write-through of the current user's decks to Supabase ----
+  useEffect(() => {
+    if (!isSupabaseConfigured || !user) return;
+    const t = setTimeout(() => {
+      const mine = dbRef.current.presentations.filter(
+        (p) => p.userId === user.id,
+      );
+      for (const p of mine) {
+        const slides = dbRef.current.slides
+          .filter((s) => s.presentationId === p.id)
+          .sort((a, b) => a.orderIndex - b.orderIndex);
+        const sig = deckSig(p, slides);
+        if (syncedRef.current.get(p.id) === sig) continue;
+        syncedRef.current.set(p.id, sig);
+        void savePresentationRemote(p, slides);
+      }
+    }, 900);
+    return () => clearTimeout(t);
+  }, [db.presentations, db.slides, user]);
 
   // ---- auth ----
   const signup = useCallback(
@@ -200,6 +291,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    if (isSupabaseConfigured && supabase) void supabase.auth.signOut();
     setUser(null);
     window.localStorage.removeItem(SESSION_KEY);
   }, []);
@@ -299,6 +391,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         presentations: d.presentations.filter((p) => p.id !== id),
         slides: d.slides.filter((s) => s.presentationId !== id),
       }));
+      syncedRef.current.delete(id);
+      if (isSupabaseConfigured) void deletePresentationRemote(id);
     },
     [commit],
   );

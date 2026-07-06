@@ -1,4 +1,4 @@
-import type { LayoutType, Slide, Tone } from "./types";
+import type { ChartSpec, ChartType, LayoutType, Slide, Tone } from "./types";
 import { uid } from "./utils";
 
 export interface GenerateInput {
@@ -12,165 +12,286 @@ export interface GenerateInput {
   notes: string;
 }
 
-interface DraftSlide {
+// Shape a single slide can take, before it's given ids/order. `chart` is left
+// loosely typed because it may arrive raw from the model; draftsToSlides()
+// normalizes it into a valid ChartSpec (or drops it).
+export interface DraftSlide {
   title: string;
   content: string[];
   speakerNotes: string;
   layoutType: LayoutType;
+  chart?: ChartSpec | unknown;
 }
 
-// ---- Small content helpers -------------------------------------------------
+// ---- Text helpers ----------------------------------------------------------
 
-function sentences(text: string): string[] {
+function clauses(text: string): string[] {
   return text
-    .replace(/\n+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
+    .replace(/\r/g, "")
+    .split(/\n|(?<=[.!?])\s+|•|;/)
+    .map((s) => s.replace(/^[-*•\d.)\s]+/, "").trim())
     .filter((s) => s.length > 3);
 }
 
-function keyPhrases(text: string, count: number): string[] {
-  const lines = text
-    .split(/\n|•|-|•/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 4);
-  const source = lines.length >= count ? lines : sentences(text);
-  return source.slice(0, count).map(tidy);
-}
-
 function tidy(s: string): string {
-  const clean = s.replace(/\s+/g, " ").trim().replace(/[.]$/, "");
+  const clean = s.replace(/\s+/g, " ").trim().replace(/[.]+$/, "");
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-const TONE_VERB: Record<Tone, string> = {
-  professional: "outlines",
-  confident: "makes the case for",
-  consultative: "works through",
-  friendly: "walks through",
-  visionary: "sets the direction for",
+// ---- Data extraction (drives real charts) ----------------------------------
+
+const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
+
+// Parse the first quantity in a clause into a comparable number.
+function parseValue(clause: string): number | null {
+  const m = clause.match(/\$?\s?(\d+(?:\.\d+)?)\s?(%|k|m|b|bn)?/i);
+  if (!m) return null;
+  let v = parseFloat(m[1]);
+  const unit = (m[2] || "").toLowerCase();
+  if (unit === "bn") v *= SCALE.b;
+  else if (unit && SCALE[unit]) v *= SCALE[unit];
+  return v;
+}
+
+// Short label for a metric clause (words around the number).
+function metricLabel(clause: string): string {
+  const words = clause
+    .replace(/\$?\d+(?:\.\d+)?\s?(%|k|m|b|bn|percent)?/gi, " ")
+    .replace(/\b(up|down|to|of|the|a|is|are|was|were|by|at|in|on|our|per)\b/gi, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  const label = words.slice(0, 3).join(" ").trim();
+  return tidy(label || clause).slice(0, 22);
+}
+
+export interface Metric {
+  label: string;
+  value: number;
+}
+
+export function extractMetrics(notes: string): Metric[] {
+  const out: Metric[] = [];
+  for (const c of clauses(notes)) {
+    if (!/\d/.test(c)) continue;
+    const value = parseValue(c);
+    if (value === null) continue;
+    out.push({ label: metricLabel(c), value });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+// A label reads as a time period (month, quarter, year, weekday).
+const TIME_LABEL =
+  /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|q[1-4]|fy\d|20\d\d|mon|tue|wed|thu|fri|week\s?\d|day\s?\d)\b/i;
+const PROPORTION_HINT =
+  /\b(share|split|mix|proportion|breakdown|% of|percent of|of total|composition|allocation)\b/i;
+
+// Line only when the category labels themselves are a time sequence; pie when
+// the notes describe parts of a whole; otherwise a comparison bar chart.
+function pickChartType(notes: string, labels: string[]): ChartType {
+  if (PROPORTION_HINT.test(notes)) return "pie";
+  const temporal = labels.filter((l) => TIME_LABEL.test(l)).length;
+  if (temporal >= Math.ceil(labels.length / 2)) return "line";
+  return "bar";
+}
+
+// Build a chart from the data found in the notes, if any.
+export function buildChartFromNotes(notes: string): ChartSpec | undefined {
+  const metrics = extractMetrics(notes);
+  if (metrics.length < 2) return undefined;
+
+  const labels = metrics.map((m) => m.label);
+  const values = metrics.map((m) => m.value);
+  const type = pickChartType(notes, labels);
+
+  if (type === "pie") {
+    return { type, title: "Breakdown", labels, series: [{ name: "Share", values }] };
+  }
+  return {
+    type,
+    title: type === "line" ? "Trend" : "Key metrics",
+    labels,
+    series: [{ name: "Value", values }],
+  };
+}
+
+// ---- Subtitle framing (never repeats the title) ----------------------------
+
+const TONE_FRAME: Record<Tone, string> = {
+  professional: "A working briefing",
+  confident: "The case",
+  consultative: "A structured read",
+  friendly: "A quick walkthrough",
+  visionary: "The direction ahead",
 };
 
-// ---- Deck engine -----------------------------------------------------------
-// Produces a business-structured 6–10 slide deck. Adapts by mode and objective.
-// This is the single seam where a real LLM call would live later.
+export function buildSubtitle(input: GenerateInput): string {
+  const provided = input.subtitle?.trim();
+  if (provided && provided.toLowerCase() !== input.title.trim().toLowerCase()) {
+    return provided;
+  }
+  const aud = input.audience.trim();
+  const goal = input.goal.trim();
+  if (aud && goal) return `${TONE_FRAME[input.tone]} for ${aud} — ${goal}`;
+  if (aud) return `${TONE_FRAME[input.tone]} prepared for ${aud}`;
+  if (goal) return `${TONE_FRAME[input.tone]}: ${goal}`;
+  return `${TONE_FRAME[input.tone]} on the path forward`;
+}
 
-export function buildDeck(input: GenerateInput): Slide[] {
+// ---- Deterministic deck engine (fallback when no LLM key) -------------------
+// Produces contextual subtitles, specific bullets pulled from the input, and a
+// native chart when the notes contain data. Mirrors what the LLM prompt asks
+// for so the app behaves consistently with or without an API key.
+
+export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
   const { title, audience, goal, tone, notes, mode } = input;
-  const aud = audience.trim() || "your audience";
+  const aud = audience.trim() || "the room";
   const objective = goal.trim() || "align on the path forward";
-
-  const notePoints = notes.trim() ? keyPhrases(notes, 8) : [];
-  const hasNotes = notePoints.length > 0;
+  const points = notes.trim() ? clauses(notes).map(tidy) : [];
+  const has = points.length > 0;
+  const chart = buildChartFromNotes(notes);
 
   const drafts: DraftSlide[] = [];
 
-  // 1. Title
   drafts.push({
     title,
-    content: [
-      input.subtitle?.trim() || `Prepared for ${aud}`,
-    ],
-    speakerNotes: `Open by framing why this matters to ${aud}. Keep it to one sentence, then move on.`,
+    content: [buildSubtitle(input)],
+    speakerNotes: `Open by naming the decision on the table for ${aud}. One sentence, then move.`,
     layoutType: "title",
   });
 
-  // 2. Agenda
   drafts.push({
     title: "What we'll cover",
     content: [
-      "Context and where things stand",
-      mode === "content" ? "Key points from the material" : "The core opportunity",
-      "Analysis and what it means",
-      "Recommendation",
-      "Next steps",
+      "Where things stand today",
+      mode === "content" ? "What the material tells us" : "The opportunity in focus",
+      chart ? "The numbers behind it" : "What it means for you",
+      `Recommendation: ${objective}`,
+      "Next steps and owners",
     ],
-    speakerNotes: "Set expectations. Tell them this will take five slides and end with a clear ask.",
+    speakerNotes: "Preview the arc: situation, evidence, recommendation, ask.",
     layoutType: "agenda",
   });
 
-  // 3. Context / Problem
   drafts.push({
     title: "Where things stand",
-    content: hasNotes
-      ? notePoints.slice(0, 3)
+    content: has
+      ? points.slice(0, 3)
       : [
-          `${aud} needs a clear read on ${title.toLowerCase()}`,
-          "Current approach leaves value on the table",
-          "The cost of waiting is rising",
+          `${aud} is deciding on ${title.toLowerCase()} without a shared baseline`,
+          "Effort is spread thin across competing priorities",
+          "Every week of delay compounds the cost",
         ],
-    speakerNotes: `Ground the room in today's reality before proposing anything. This deck ${TONE_VERB[tone]} the situation for ${aud}.`,
+    speakerNotes: "Ground the room in today's reality before proposing anything.",
     layoutType: "content",
   });
 
-  // 4. Key points / Analysis
-  drafts.push({
-    title: mode === "content" ? "Key points" : "The opportunity",
-    content: hasNotes
-      ? notePoints.slice(3, 7)
+  // Evidence / key-points slide — carries the chart when data is present.
+  const evidence: DraftSlide = {
+    title: chart
+      ? "The numbers"
+      : mode === "content"
+      ? "Key points"
+      : "The opportunity",
+    content: has
+      ? points.slice(3, 6)
       : [
-          "Demand is real and growing in the segment",
-          "We can move faster than the current baseline",
-          "Early signals point to a repeatable model",
-          "The team and tooling are in place",
+          `Demand for ${title.toLowerCase()} is concrete and reachable now`,
+          "A focused team can move faster than the current baseline",
+          "Early signals point to a model we can repeat",
         ],
-    speakerNotes: "Spend the most time here. These are the load-bearing points — everything downstream rests on them.",
-    layoutType: "two-column",
-  });
+    speakerNotes: chart
+      ? "Walk the chart left to right. Land the single number that matters most."
+      : "Spend the most time here — everything downstream rests on these points.",
+    layoutType: chart ? "content" : "two-column",
+  };
+  if (chart) evidence.chart = chart;
+  drafts.push(evidence);
 
-  // 5. Analysis / What it means
   drafts.push({
     title: "What this means",
     content: [
-      `For ${aud}, the implication is a clearer, faster path`,
-      "Focus effort where it compounds",
-      "Reduce the moving parts that slow decisions",
+      `For ${aud}, this is a clearer, faster path to ${objective}`,
+      "Concentrate effort where it compounds",
+      "Cut the moving parts that slow decisions",
     ],
-    speakerNotes: "Translate the points above into consequences the audience cares about. Make it about them, not the data.",
+    speakerNotes: "Translate evidence into consequences the audience cares about.",
     layoutType: "content",
   });
 
-  // 6. Recommendation
   drafts.push({
     title: "Recommendation",
     content: [
-      `Commit to a focused plan to ${objective}`,
-      "Start with the highest-leverage move",
-      "Set a measurable checkpoint in 30 days",
+      `Commit now to ${objective}`,
+      has ? `Lead with: ${points[0]}` : "Start with the highest-leverage move",
+      "Set a measurable checkpoint at 30 days",
     ],
-    speakerNotes: "State the recommendation in one line, then support it. Be direct — this is the point of the deck.",
+    speakerNotes: "State the recommendation in one line, then support it. Be direct.",
     layoutType: "section",
   });
 
-  // 7. Next steps
   drafts.push({
     title: "Next steps",
     content: [
-      "Confirm scope and owner this week",
+      "Confirm scope and a single owner this week",
       "Kick off the first workstream",
       "Review progress at the 30-day mark",
     ],
-    speakerNotes: "End with a concrete ask. Name the owner and the date before you close.",
+    speakerNotes: "End with a concrete ask: name the owner and the date.",
     layoutType: "closing",
   });
 
-  // Optionally extend to keep within the 6–10 range when notes are rich.
-  if (hasNotes && notePoints.length >= 7) {
-    drafts.splice(5, 0, {
-      title: "Supporting detail",
-      content: notePoints.slice(6, 8),
-      speakerNotes: "Use this only if asked to go deeper. Otherwise keep it as backup.",
-      layoutType: "two-column",
-    });
-  }
+  return drafts;
+}
 
-  return drafts.map((d, i) => ({
+// ---- Draft -> Slide mapping (shared by fallback and LLM path) ---------------
+
+export function draftsToSlides(
+  presentationId: string,
+  drafts: DraftSlide[],
+): Slide[] {
+  return drafts.slice(0, 10).map((d, i) => ({
     id: uid("slide"),
-    presentationId: input.presentationId,
+    presentationId,
     orderIndex: i,
     title: d.title,
-    content: d.content,
-    speakerNotes: d.speakerNotes,
+    content: d.content.filter(Boolean),
+    speakerNotes: d.speakerNotes ?? "",
     layoutType: d.layoutType,
+    chart: normalizeChart(d.chart),
   }));
+}
+
+// Defensive normalization so bad LLM chart JSON never crashes the renderer.
+export function normalizeChart(chart: unknown): ChartSpec | undefined {
+  if (!chart || typeof chart !== "object") return undefined;
+  const c = chart as Partial<ChartSpec>;
+  const type: ChartType =
+    c.type === "line" || c.type === "pie" ? c.type : "bar";
+  const labels = Array.isArray(c.labels)
+    ? c.labels.map(String).slice(0, 8)
+    : [];
+  const rawSeries = Array.isArray(c.series) ? c.series : [];
+  const series = rawSeries
+    .map((s) => ({
+      name: typeof s?.name === "string" && s.name ? s.name : "Value",
+      values: Array.isArray(s?.values)
+        ? s.values.map((v) => Number(v)).filter((v) => Number.isFinite(v))
+        : [],
+    }))
+    .filter((s) => s.values.length > 0);
+  if (labels.length < 2 || series.length === 0) return undefined;
+  // Trim every series to the label count.
+  series.forEach((s) => (s.values = s.values.slice(0, labels.length)));
+  return {
+    type,
+    title: typeof c.title === "string" ? c.title : undefined,
+    labels,
+    series,
+  };
+}
+
+export function buildDeck(input: GenerateInput): Slide[] {
+  return draftsToSlides(input.presentationId, buildDeckDrafts(input));
 }
