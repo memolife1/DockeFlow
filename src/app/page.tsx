@@ -1,222 +1,313 @@
 import Link from "next/link";
-import { MarketingHeader } from "@/components/marketing/MarketingHeader";
-import { DeckPreview } from "@/components/marketing/DeckPreview";
-import { ButtonLink } from "@/components/ui/Button";
-import { Logo } from "@/components/brand/Logo";
-import { Eyebrow } from "@/components/ui/Misc";
-import {
-  IconArrowRight,
-  IconUpload,
-  IconDoc,
-  IconLayers,
-} from "@/components/ui/icons";
-import { BUILT_IN_TEMPLATES } from "@/lib/templates";
 
-const STEPS = [
-  {
-    n: "01",
-    title: "Start from a topic or your notes",
-    body: "Paste rough content or just describe what the deck is for. Set the audience, objective, and tone.",
-  },
-  {
-    n: "02",
-    title: "Bring your own template",
-    body: "Pick a built-in style or upload a template or reference deck. DeckeFlow follows its structure and look.",
-  },
-  {
-    n: "03",
-    title: "Edit, reorder, present",
-    body: "Get a structured 6–10 slide draft. Refine the wording, rearrange slides, then preview or export.",
-  },
-];
-
-const USE_CASES = [
-  ["Sales teams", "Pitches, proposals, and quarterly account reviews."],
-  ["Consultants", "Findings, recommendations, and client-ready briefs."],
-  ["Founders", "Investor updates and all-hands that stay on message."],
-  ["Account managers", "Renewals and QBRs without starting from a blank slide."],
-];
-
-export default function LandingPage() {
+// Marketing homepage (converted from the Stitch design). Static/server
+// component — the only interactive bits are real links into the app.
+export default function HomePage() {
   return (
-    <div className="min-h-screen bg-paper-soft">
-      <MarketingHeader />
-
-      {/* Hero — asymmetric, left-aligned */}
-      <section className="u-container grid grid-cols-1 gap-14 py-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-24">
-        <div className="animate-fade-up">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1 text-[12px] text-ink-soft shadow-card">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            Now in early access
+    <div className="font-jakarta bg-surface text-on-surface selection:bg-primary selection:text-white overflow-x-hidden">
+      {/* Navigation */}
+      <header className="w-full top-0 bg-surface/80 backdrop-blur-md flex justify-between items-center px-margin-mobile md:px-margin-desktop py-md sticky z-50 border-b border-outline-variant/30">
+        <div className="flex items-center gap-sm">
+          <div className="bg-primary p-1 rounded-lg">
+            <span className="material-symbols-outlined text-white text-[24px]" data-icon="auto_awesome_motion">
+              auto_awesome_motion
+            </span>
           </div>
-          <h1 className="u-display max-w-[16ch] text-4xl leading-[1.05] sm:text-5xl lg:text-[3.4rem]">
-            Client-ready presentations, built from what you already have.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-            Create professional presentations from a topic, your notes, or your
-            own template. DeckeFlow turns rough input into polished, branded
-            decks — usually in a few minutes.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <ButtonLink href="/signup" size="lg">
-              Create a presentation
-              <IconArrowRight className="h-4 w-4" />
-            </ButtonLink>
-            <ButtonLink href="/login" size="lg" variant="secondary">
-              Log in
-            </ButtonLink>
-          </div>
-          <p className="mt-5 text-[13px] text-ink-muted">
-            No credit card. Bring your own template as a style reference.
-          </p>
+          <span className="text-xl font-extrabold tracking-tight text-primary">DeckeFlow</span>
         </div>
-        <div className="animate-fade-up lg:pl-4">
-          <DeckPreview />
+        <div className="hidden md:flex items-center gap-xl font-semibold text-on-surface-variant">
+          <a className="hover:text-primary transition-colors" href="#">Features</a>
+          <a className="hover:text-primary transition-colors" href="#">Solutions</a>
+          <a className="hover:text-primary transition-colors" href="#">Pricing</a>
         </div>
-      </section>
-
-      {/* Differentiator band */}
-      <section className="border-y border-line bg-paper">
-        <div className="u-container grid grid-cols-1 gap-10 py-14 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-          <div>
-            <Eyebrow>The difference</Eyebrow>
-            <h2 className="u-display mt-3 text-2xl sm:text-3xl">
-              Upload a template. Every deck follows it.
-            </h2>
-          </div>
-          <p className="text-lg leading-relaxed text-ink-soft">
-            Most tools hand you their look. DeckeFlow works the other way: give
-            it a template or a reference deck you already trust, and generated
-            slides inherit that structure and style — so the output looks like
-            it came from your team, not a generator.
-          </p>
-        </div>
-      </section>
-
-      {/* How it works — numbered editorial rows, not glowing cards */}
-      <section id="how" className="u-container py-20">
-        <Eyebrow>How it works</Eyebrow>
-        <h2 className="u-display mt-3 max-w-2xl text-3xl">
-          From rough input to a structured draft in three steps.
-        </h2>
-        <div className="mt-12 divide-y divide-line border-y border-line">
-          {STEPS.map((s) => (
-            <div
-              key={s.n}
-              className="grid grid-cols-1 gap-4 py-8 md:grid-cols-[80px_1fr_1.2fr] md:items-baseline"
-            >
-              <div className="font-serif text-2xl text-accent">{s.n}</div>
-              <h3 className="text-lg font-semibold text-ink">{s.title}</h3>
-              <p className="text-ink-soft">{s.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Templates strip */}
-      <section id="templates" className="border-y border-line bg-paper">
-        <div className="u-container py-20">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <Eyebrow>Templates</Eyebrow>
-              <h2 className="u-display mt-3 text-3xl">
-                Start with a considered style.
-              </h2>
-            </div>
-            <Link
-              href="/templates"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-hover"
-            >
-              Browse the library <IconArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {BUILT_IN_TEMPLATES.map((t) => (
-              <div
-                key={t.id}
-                className="group rounded-lg border border-line bg-paper-soft p-3 transition-shadow hover:shadow-card"
-              >
-                <div
-                  className="mb-3 aspect-[16/10] rounded-md border border-line"
-                  style={{ background: t.theme.surface }}
-                >
-                  <div
-                    className="h-full w-[5px] rounded-l-md"
-                    style={{ background: t.theme.accent }}
-                  />
-                </div>
-                <p className="text-sm font-medium text-ink">{t.name}</p>
-                <p className="text-[12px] text-ink-muted">{t.theme.character}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Use cases */}
-      <section id="usecases" className="u-container py-20">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <Eyebrow>Built for</Eyebrow>
-            <h2 className="u-display mt-3 text-3xl">
-              The people who present for a living.
-            </h2>
-            <p className="mt-4 max-w-sm text-ink-soft">
-              DeckeFlow is made for busy professionals in small and mid-sized
-              teams who need a good deck without spending an afternoon on it.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
-                <IconDoc className="h-4 w-4 text-accent" /> From content
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
-                <IconUpload className="h-4 w-4 text-accent" /> Your template
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
-                <IconLayers className="h-4 w-4 text-accent" /> Editable slides
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2">
-            {USE_CASES.map(([title, body]) => (
-              <div key={title} className="bg-paper p-6">
-                <h3 className="font-semibold text-ink">{title}</h3>
-                <p className="mt-1.5 text-sm text-ink-soft">{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="border-t border-line bg-ink text-paper">
-        <div className="u-container flex flex-col items-start gap-6 py-16 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Generate your first deck today.
-            </h2>
-            <p className="mt-2 text-paper/70">
-              Turn a topic or a page of notes into a client-ready presentation.
-            </p>
-          </div>
-          <ButtonLink
-            href="/signup"
-            size="lg"
-            className="bg-accent text-white hover:bg-accent-hover"
+        <div className="flex items-center gap-md">
+          <Link
+            href="/login"
+            className="font-bold text-on-surface-variant hover:text-primary px-md py-xs"
           >
-            Get started
-            <IconArrowRight className="h-4 w-4" />
-          </ButtonLink>
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="bg-primary text-on-primary px-lg py-sm rounded-full font-bold transition-all hover:shadow-lg active:scale-95"
+          >
+            Get Started
+          </Link>
         </div>
-      </section>
+      </header>
+
+      <main>
+        {/* Hero Section */}
+        <section className="hero-gradient pt-xl pb-3xl px-margin-mobile md:px-margin-desktop overflow-hidden">
+          <div className="max-w-screen-xl mx-auto flex flex-col items-center text-center gap-xl">
+            <div className="space-y-md max-w-4xl animate-fade-up">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+                The Future of Professional Slides
+              </span>
+              <h1 className="text-4xl md:text-6xl font-extrabold text-on-surface tracking-tight leading-[1.1]">
+                A smarter way to present <span className="text-primary">high-stakes ideas.</span>
+              </h1>
+              <p className="text-lg md:text-xl text-on-surface-variant leading-relaxed max-w-2xl mx-auto">
+                Turn raw notes into executive-ready presentations. Engineered for sales leaders,
+                consultants, and founders who demand precision.
+              </p>
+            </div>
+
+            {/* Punchy CTA & Input Area */}
+            <div className="w-full max-w-2xl bg-white p-2 rounded-2xl shadow-xl border border-outline-variant/50 flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 flex items-center px-4 py-3">
+                <span className="material-symbols-outlined text-outline mr-3" data-icon="edit_note">
+                  edit_note
+                </span>
+                <input
+                  className="w-full border-none focus:ring-0 text-on-surface placeholder:text-outline/60 bg-transparent"
+                  placeholder="A pitch deck for a fintech startup..."
+                  type="text"
+                />
+              </div>
+              <Link
+                href="/signup"
+                className="bg-primary text-white px-xl py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+              >
+                Generate Deck
+                <span className="material-symbols-outlined text-[20px]" data-icon="arrow_forward">
+                  arrow_forward
+                </span>
+              </Link>
+            </div>
+
+            {/* Hero Visual */}
+            <div className="w-full max-w-5xl mt-xl relative">
+              <div className="rounded-2xl overflow-hidden shadow-2xl border border-outline-variant/30 bg-surface-container slide-glow">
+                {/* IMAGE PLACEHOLDER — swap in real asset */}
+                <div className="w-full aspect-[16/9] bg-surface-container-high border border-dashed border-outline-variant flex items-center justify-center text-center p-lg">
+                  <div className="flex flex-col items-center gap-2 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[32px] text-outline" data-icon="image">
+                      image
+                    </span>
+                    <span className="text-sm font-semibold">Real product screenshot — Hero deck example</span>
+                  </div>
+                </div>
+              </div>
+              {/* Floating Detail Card */}
+              <div className="absolute -bottom-6 -right-4 md:-right-12 bg-white p-lg rounded-xl shadow-2xl border border-outline-variant hidden sm:block max-w-[280px] text-left">
+                <div className="flex items-center gap-sm mb-sm text-primary">
+                  <span className="material-symbols-outlined" data-icon="insights">insights</span>
+                  <span className="font-bold text-sm uppercase">AI Insights</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Chart data extracted from your raw Q4 CRM exports and automatically visualized for
+                  clarity.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* "Upload Your Template" Core Differentiator */}
+        <section className="py-3xl px-margin-mobile md:px-margin-desktop bg-surface-container-low">
+          <div className="max-w-screen-xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3xl items-center">
+            <div className="space-y-xl">
+              <div className="space-y-md">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold uppercase tracking-widest">
+                  <span className="material-symbols-outlined text-[16px]" data-icon="schedule">schedule</span>
+                  Coming soon
+                </span>
+                <h2 className="text-3xl md:text-5xl font-extrabold text-on-surface leading-tight">
+                  Your brand, <span className="text-primary italic">amplified.</span> Not replaced.
+                </h2>
+                <p className="text-lg text-on-surface-variant leading-relaxed">
+                  Unlike generic slide generators, DeckeFlow learns your visual DNA. Upload your
+                  existing master template or brand book, and we&apos;ll ensure every pixel aligns
+                  with your corporate identity.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-lg">
+                <div className="flex gap-md">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined" data-icon="upload_file">upload_file</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold mb-1">Upload Master</h4>
+                    <p className="text-sm text-on-surface-variant">Drop your .pptx or .pdf brand guidelines.</p>
+                  </div>
+                </div>
+                <div className="flex gap-md">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined" data-icon="palette">palette</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold mb-1">DNA Extraction</h4>
+                    <p className="text-sm text-on-surface-variant">We map fonts, HEX colors, and layouts.</p>
+                  </div>
+                </div>
+              </div>
+              <button className="border-2 border-primary text-primary px-xl py-md rounded-xl font-bold hover:bg-primary hover:text-white transition-all inline-flex items-center gap-2">
+                Join the waitlist
+                <span className="material-symbols-outlined text-[20px]" data-icon="schedule">schedule</span>
+              </button>
+            </div>
+            <div className="relative">
+              <div className="rounded-2xl overflow-hidden shadow-2xl bg-white p-2">
+                {/* IMAGE PLACEHOLDER — swap in real asset */}
+                <div className="w-full aspect-[4/3] rounded-xl bg-surface-container-high border border-dashed border-outline-variant flex items-center justify-center text-center p-lg">
+                  <div className="flex flex-col items-center gap-2 text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[32px] text-outline" data-icon="image">image</span>
+                    <span className="text-sm font-semibold">Real product screenshot — Brand template example</span>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl -z-10" />
+              <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-blue-400/10 rounded-full blur-3xl -z-10" />
+            </div>
+          </div>
+        </section>
+
+        {/* Professional Visuals Gallery */}
+        <section className="py-3xl px-margin-mobile md:px-margin-desktop bg-white">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="text-center mb-2xl space-y-md">
+              <h2 className="text-3xl md:text-5xl font-extrabold text-on-surface">Precision for every professional.</h2>
+              <p className="text-lg text-on-surface-variant max-w-2xl mx-auto">
+                High-fidelity layouts tailored for the people who close the deals.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+              {[
+                {
+                  title: "For Sales Leaders",
+                  body: "Complex revenue data transformed into persuasive narratives in seconds.",
+                  label: "Real product screenshot — Sales deck example",
+                },
+                {
+                  title: "For Consultants",
+                  body: "Logical, editorial structures that guide stakeholders through complex strategies.",
+                  label: "Real product screenshot — Consulting deck example",
+                },
+                {
+                  title: "For Startup Founders",
+                  body: "Investor-ready pitch decks with cinematic impact and perfect brand compliance.",
+                  label: "Real product screenshot — Founder pitch example",
+                },
+              ].map((card) => (
+                <div key={card.title} className="group flex flex-col gap-md">
+                  <div className="aspect-video rounded-xl overflow-hidden border border-outline-variant/30 shadow-lg transition-all group-hover:scale-[1.02] group-hover:shadow-xl">
+                    {/* IMAGE PLACEHOLDER — swap in real asset */}
+                    <div className="w-full h-full bg-surface-container-high flex items-center justify-center text-center p-md">
+                      <div className="flex flex-col items-center gap-2 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[28px] text-outline" data-icon="image">image</span>
+                        <span className="text-sm font-semibold px-2">{card.label}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">{card.title}</h3>
+                    <p className="text-sm text-on-surface-variant leading-relaxed">{card.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* High Impact CTA Section */}
+        <section className="py-3xl px-margin-mobile md:px-margin-desktop">
+          <div className="max-w-screen-xl mx-auto bg-primary rounded-[2.5rem] p-xl md:p-3xl text-center text-white relative overflow-hidden shadow-2xl">
+            {/* Decorative light patterns */}
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent" />
+            <div className="relative z-10 space-y-xl">
+              <h2 className="text-3xl md:text-5xl font-extrabold leading-tight">
+                Ready to elevate your <br />presentation game?
+              </h2>
+              <p className="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto">
+                Built for professionals who present for a living.
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-md">
+                <Link
+                  href="/signup"
+                  className="bg-white text-primary px-xl py-md rounded-full font-extrabold text-lg transition-all hover:scale-105 shadow-xl"
+                >
+                  Get Started for Free
+                </Link>
+                <Link
+                  href="/login"
+                  className="bg-blue-700/50 backdrop-blur-md text-white border border-white/20 px-xl py-md rounded-full font-bold text-lg hover:bg-blue-700 transition-all"
+                >
+                  Book a Demo
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="u-container flex flex-col items-start justify-between gap-4 py-10 sm:flex-row sm:items-center">
-        <Logo />
-        <p className="text-[13px] text-ink-muted">
-          © {new Date().getFullYear()} DeckeFlow. A demo MVP.
-        </p>
+      <footer className="bg-surface py-3xl px-margin-mobile md:px-margin-desktop border-t border-outline-variant/30">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-xl mb-3xl">
+            <div className="col-span-2">
+              <div className="flex items-center gap-sm mb-lg">
+                <div className="bg-primary p-1 rounded-md">
+                  <span className="material-symbols-outlined text-white text-[20px]" data-icon="auto_awesome_motion">
+                    auto_awesome_motion
+                  </span>
+                </div>
+                <span className="text-xl font-extrabold tracking-tight text-primary">DeckeFlow</span>
+              </div>
+              <p className="text-on-surface-variant text-sm leading-relaxed max-w-xs">
+                The world&apos;s most advanced AI presentation engine for high-stakes professional use.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-widest mb-lg">Product</h4>
+              <ul className="space-y-md text-sm text-on-surface-variant">
+                <li><a className="hover:text-primary transition-colors" href="#">Features</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Integrations</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Enterprise</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-widest mb-lg">Resources</h4>
+              <ul className="space-y-md text-sm text-on-surface-variant">
+                <li><a className="hover:text-primary transition-colors" href="#">Blog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Case Studies</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Templates</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold text-sm uppercase tracking-widest mb-lg">Company</h4>
+              <ul className="space-y-md text-sm text-on-surface-variant">
+                <li><a className="hover:text-primary transition-colors" href="#">About</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Careers</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Contact</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-xl border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-md text-xs text-outline font-semibold">
+            <p>© 2026 DeckeFlow Inc. All rights reserved.</p>
+            <div className="flex gap-xl">
+              <a className="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+              <a className="hover:text-primary transition-colors" href="#">Terms of Service</a>
+              <a className="hover:text-primary transition-colors" href="#">Cookie Policy</a>
+            </div>
+          </div>
+        </div>
       </footer>
+
+      {/* Floating Mobile CTA (Hidden on desktop) */}
+      <div className="fixed bottom-6 left-margin-mobile right-margin-mobile z-50 sm:hidden">
+        <Link
+          href="/signup"
+          className="w-full bg-primary text-white py-4 rounded-full font-bold shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
+        >
+          Get Started for Free
+          <span className="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+        </Link>
+      </div>
     </div>
   );
 }
