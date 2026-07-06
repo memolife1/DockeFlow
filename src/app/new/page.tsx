@@ -46,6 +46,7 @@ export default function NewPresentationPage() {
     notes: "",
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [useStockImages, setUseStockImages] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
@@ -88,6 +89,7 @@ export default function NewPresentationPage() {
       goal: form.goal.trim(),
       tone: form.tone,
       templateId,
+      useStockImages,
       status: "generating",
     });
     try {
@@ -339,6 +341,36 @@ export default function NewPresentationPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Stock photography toggle (affects the exported title slide). */}
+              <div className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-line bg-paper p-4">
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    Include stock photography
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-ink-muted">
+                    Adds a relevant background photo to your title slide.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={useStockImages}
+                  onClick={() => setUseStockImages((v) => !v)}
+                  className={cn(
+                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                    useStockImages ? "bg-accent" : "bg-line-strong",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all",
+                      useStockImages ? "left-[22px]" : "left-0.5",
+                    )}
+                  />
+                </button>
+              </div>
+
               {error && (
                 <p className="mt-4 text-sm text-red-600">{error}</p>
               )}

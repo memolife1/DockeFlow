@@ -50,8 +50,22 @@ export function ExportDialog({
         const uploaded = templates.filter((t) => t.sourceType === "uploaded");
         const template =
           getTemplate(pres.templateId, uploaded) ?? BUILT_IN_TEMPLATES[0];
+
+        // Optional Pexels title-slide background. Silent fallback on any issue.
+        let titleImageDataUri: string | undefined;
+        if (pres.useStockImages) {
+          try {
+            const q = [pres.title, pres.goal].filter(Boolean).join(" ").slice(0, 80);
+            const res = await fetch(`/api/stock-image?q=${encodeURIComponent(q)}`);
+            const data = (await res.json()) as { image: string | null };
+            if (data.image) titleImageDataUri = data.image;
+          } catch {
+            /* fall back to the colored-panel title */
+          }
+        }
+
         // Builds a real .pptx (with native charts) and downloads it.
-        await exportDeckToPptx(pres, slides, template.theme);
+        await exportDeckToPptx(pres, slides, template.theme, { titleImageDataUri });
       } else {
         // PDF / share-link remain placeholder flows in this MVP.
         await fetch("/api/export", {

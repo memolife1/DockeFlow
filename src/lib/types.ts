@@ -58,6 +58,9 @@ export interface Presentation {
   tone: Tone;
   templateId: string;
   status: PresentationStatus;
+  // When true, the .pptx export puts a Pexels photo behind the title slide.
+  // Session-scoped presentation option; not persisted to Supabase.
+  useStockImages?: boolean;
   createdAt: string;
   updatedAt: string;
 }
