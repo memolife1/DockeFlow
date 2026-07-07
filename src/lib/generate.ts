@@ -40,28 +40,40 @@ function tidy(s: string): string {
 
 // ---- Data extraction (drives real charts) ----------------------------------
 
-const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
+const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9, bn: 1e9 };
 
-// Parse the first quantity in a clause into a comparable number.
+// Find the most meaningful quantity in a clause. Numbers glued to a letter
+// (Q1, FY25, H2) are ignored; numbers with a unit ($, %, k/m/b) or a decimal
+// are preferred over bare integers.
 function parseValue(clause: string): number | null {
-  const m = clause.match(/\$?\s?(\d+(?:\.\d+)?)\s?(%|k|m|b|bn)?/i);
-  if (!m) return null;
-  let v = parseFloat(m[1]);
-  const unit = (m[2] || "").toLowerCase();
-  if (unit === "bn") v *= SCALE.b;
-  else if (unit && SCALE[unit]) v *= SCALE[unit];
-  return v;
+  const re = /(^|[^A-Za-z0-9.])(\$?)(\d+(?:\.\d+)?)\s?(%|k|m|b|bn)?/gi;
+  let best: { value: number; score: number } | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(clause))) {
+    const [, , dollar, num, unitRaw] = m;
+    const unit = (unitRaw || "").toLowerCase();
+    let v = parseFloat(num);
+    if (SCALE[unit]) v *= SCALE[unit];
+    const meaningful = !!unit || !!dollar || num.includes(".");
+    const score = meaningful ? 2 : 1;
+    if (!best || score > best.score) best = { value: v, score };
+  }
+  return best ? best.value : null;
 }
 
-// Short label for a metric clause (words around the number).
+// Short label for a metric clause (drop the number, units, and period token).
 function metricLabel(clause: string): string {
   const words = clause
+    .replace(/\b(q[1-4]|fy\d{2,4}|h[12]|20\d\d)\b/gi, " ")
     .replace(/\$?\d+(?:\.\d+)?\s?(%|k|m|b|bn|percent)?/gi, " ")
-    .replace(/\b(up|down|to|of|the|a|is|are|was|were|by|at|in|on|our|per)\b/gi, " ")
+    .replace(
+      /\b(up|down|to|of|the|a|is|are|was|were|by|at|in|on|our|per|reached|climbed|grew|fell|rose)\b/gi,
+      " ",
+    )
     .split(/\s+/)
     .filter((w) => w.length > 1);
   const label = words.slice(0, 3).join(" ").trim();
-  return tidy(label || clause).slice(0, 22);
+  return tidy(label || clause).slice(0, 24);
 }
 
 export interface Metric {
@@ -96,8 +108,48 @@ function pickChartType(notes: string, labels: string[]): ChartType {
   return "bar";
 }
 
+// A clause tagged with a time period (Q1, months, years) plus a value —
+// labelled by the period so a line chart reads correctly, not by scraped words.
+const PERIOD_RE =
+  /\b(q[1-4]|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|20\d\d)\b/i;
+
+function normalizePeriod(p: string): string {
+  const s = p.trim();
+  if (/^q[1-4]$/i.test(s)) return s.toUpperCase();
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function extractTimeSeries(
+  notes: string,
+): { labels: string[]; values: number[] } | null {
+  const points: { period: string; value: number }[] = [];
+  for (const c of clauses(notes)) {
+    const pm = c.match(PERIOD_RE);
+    if (!pm) continue;
+    const value = parseValue(c);
+    if (value === null) continue;
+    points.push({ period: normalizePeriod(pm[1]), value });
+  }
+  if (points.length < 2) return null;
+  return {
+    labels: points.map((p) => p.period),
+    values: points.map((p) => p.value),
+  };
+}
+
 // Build a chart from the data found in the notes, if any.
 export function buildChartFromNotes(notes: string): ChartSpec | undefined {
+  // Prefer a clean, period-labelled trend when the notes describe one.
+  const ts = extractTimeSeries(notes);
+  if (ts) {
+    return {
+      type: "line",
+      title: "Trend",
+      labels: ts.labels,
+      series: [{ name: "Value", values: ts.values }],
+    };
+  }
+
   const metrics = extractMetrics(notes);
   if (metrics.length < 2) return undefined;
 
