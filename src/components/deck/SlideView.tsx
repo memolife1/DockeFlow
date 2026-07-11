@@ -19,7 +19,10 @@ export function SlideView({
   const isTitle = slide.layoutType === "title";
   const isSection = slide.layoutType === "section";
   const isClosing = slide.layoutType === "closing";
-  const twoCol = slide.layoutType === "two-column";
+  const hasColumns =
+    slide.layoutType === "two-column" && !!slide.columns?.length;
+  const isStat = slide.layoutType === "stat-block" && !!slide.stats?.length;
+  const twoCol = slide.layoutType === "two-column" && !hasColumns;
   const fontClass = theme.fontFamily === "serif" ? "font-serif" : "font-sans";
 
   return (
@@ -74,22 +77,74 @@ export function SlideView({
             <h2 className="text-[4.4cqw] font-semibold leading-[1.1] tracking-[-0.015em]">
               {slide.title}
             </h2>
-            <div
-              className={cn(
-                "mt-[4%] flex-1",
-                twoCol ? "grid grid-cols-2 gap-x-[6%] gap-y-[2%]" : "space-y-[2.4%]",
-              )}
-            >
-              {slide.content.map((line, i) => (
-                <div key={i} className="flex gap-[2%] text-[2.9cqw] leading-snug">
-                  <span
-                    className="mt-[0.7em] h-[0.42em] w-[0.42em] shrink-0 rounded-full"
-                    style={{ background: theme.accent }}
-                  />
-                  <span className="opacity-90">{line}</span>
-                </div>
-              ))}
-            </div>
+
+            {isStat ? (
+              <div className="mt-[5%] grid flex-1 auto-cols-fr grid-flow-col items-center gap-[4%]">
+                {slide.stats!.map((stat, i) => (
+                  <div key={i} className="flex flex-col">
+                    <div
+                      className="text-[8.5cqw] font-bold leading-none tracking-[-0.03em]"
+                      style={{ color: theme.accent }}
+                    >
+                      {stat.value}
+                    </div>
+                    <div className="mt-[8%] text-[2.4cqw] leading-snug opacity-70">
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : hasColumns ? (
+              <div className="mt-[4%] grid flex-1 grid-cols-2 gap-[5%]">
+                {slide.columns!.map((col, ci) => (
+                  <div key={ci} className="flex flex-col">
+                    <div
+                      className="text-[2.9cqw] font-semibold uppercase tracking-[0.08em]"
+                      style={{ color: theme.accent }}
+                    >
+                      {col.heading}
+                    </div>
+                    <div className="mt-[6%] space-y-[4%]">
+                      {col.points.map((pt, pi) => (
+                        <div
+                          key={pi}
+                          className="flex gap-[4%] text-[2.6cqw] leading-snug"
+                        >
+                          <span
+                            className="mt-[0.7em] h-[0.4em] w-[0.4em] shrink-0 rounded-full"
+                            style={{ background: theme.accent }}
+                          />
+                          <span className="opacity-90">{pt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "mt-[4%] flex-1",
+                  twoCol
+                    ? "grid grid-cols-2 gap-x-[6%] gap-y-[2%]"
+                    : "space-y-[2.4%]",
+                )}
+              >
+                {slide.content.map((line, i) => (
+                  <div
+                    key={i}
+                    className="flex gap-[2%] text-[2.9cqw] leading-snug"
+                  >
+                    <span
+                      className="mt-[0.7em] h-[0.42em] w-[0.42em] shrink-0 rounded-full"
+                      style={{ background: theme.accent }}
+                    />
+                    <span className="opacity-90">{line}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {isClosing && (
               <div
                 className="mt-[3%] h-[3px] w-[22%]"

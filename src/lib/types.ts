@@ -23,8 +23,21 @@ export type LayoutType =
   | "section"
   | "content"
   | "two-column"
+  | "stat-block"
   | "quote"
   | "closing";
+
+// Big-number highlight shown on a stat-block slide.
+export interface Stat {
+  value: string; // e.g. "47%", "3x", "$2.4M"
+  label: string;
+}
+
+// One side of a two-column comparison slide.
+export interface SlideColumn {
+  heading: string;
+  points: string[];
+}
 
 export type TemplateSourceType = "built-in" | "uploaded";
 
@@ -74,6 +87,8 @@ export interface Slide {
   speakerNotes: string;
   layoutType: LayoutType;
   chart?: ChartSpec; // present on data-oriented slides
+  stats?: Stat[]; // present on stat-block slides
+  columns?: SlideColumn[]; // present on two-column comparison slides
 }
 
 export interface Template {

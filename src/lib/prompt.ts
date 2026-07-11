@@ -1,4 +1,5 @@
 import type { GenerateInput } from "./generate";
+import type { LayoutType } from "./types";
 
 // System prompt for slide generation. Instructs the model to write real,
 // specific business content, never repeat the title in the subtitle, and to
@@ -11,8 +12,13 @@ Produce a deck of 6–9 slides as JSON matching exactly this shape:
     {
       "title": "string — see HEADLINE rules",
       "subtitle": "string — ONLY on the first (title) slide",
-      "layoutType": "title | agenda | content | two-column | section | closing",
+      "layoutType": "title | content | two-column | stat-block | section | closing",
       "bullets": ["string", ...],
+      "stats": [{ "value": "47%", "label": "what the number means" }],
+      "columns": [
+        { "heading": "Left heading", "points": ["...", "..."] },
+        { "heading": "Right heading", "points": ["...", "..."] }
+      ],
       "speakerNotes": "string — the verbal 'so what', see rules",
       "chart": {
         "type": "bar | line | pie",
@@ -23,6 +29,15 @@ Produce a deck of 6–9 slides as JSON matching exactly this shape:
     }
   ]
 }
+
+LAYOUTS — use the right one for the content, and vary them:
+- "title": opening slide (has subtitle). Exactly one, first.
+- "content": an assertion headline + 3–5 evidence bullets. Optionally a chart.
+- "two-column": a comparison/contrast — provide "columns" (exactly 2, each with a heading + 2–4 points). e.g. today vs. proposed, risk vs. upside.
+- "stat-block": 2–3 headline numbers — provide "stats" (each value + label). Use for the proof-point slide.
+- "section": a divider that names the next act (0–1 bullets).
+- "closing": the decision/next steps — bullets become an ordered ask.
+Every deck MUST include at least one "stat-block", one "two-column", and one "section". Populate "stats" only on stat-block slides and "columns" only on two-column slides.
 
 RULES — follow every one:
 
@@ -66,28 +81,41 @@ export interface ModelSlide {
   title?: string;
   subtitle?: string;
   layoutType?: string;
+  layout?: string; // tolerated synonym for layoutType
   bullets?: unknown;
+  stats?: unknown;
+  columns?: unknown;
   speakerNotes?: string;
   chart?: unknown;
 }
 
-const LAYOUTS = [
-  "title",
-  "agenda",
-  "section",
-  "content",
-  "two-column",
-  "quote",
-  "closing",
-] as const;
+// Accept both the app's names and common synonyms the model may emit.
+const LAYOUT_SYNONYMS: Record<string, LayoutType> = {
+  title: "title",
+  agenda: "agenda",
+  content: "content",
+  bullets: "content",
+  "two-column": "two-column",
+  two_column: "two-column",
+  twocolumn: "two-column",
+  comparison: "two-column",
+  "stat-block": "stat-block",
+  stat_block: "stat-block",
+  stats: "stat-block",
+  section: "section",
+  section_break: "section",
+  "section-break": "section",
+  quote: "quote",
+  closing: "closing",
+  cta: "closing",
+  summary: "closing",
+};
 
 export function modelSlidesToDrafts(slides: ModelSlide[]) {
   return slides.map((s, i) => {
-    const layoutType = (LAYOUTS as readonly string[]).includes(s.layoutType || "")
-      ? (s.layoutType as (typeof LAYOUTS)[number])
-      : i === 0
-      ? "title"
-      : "content";
+    const raw = (s.layoutType || s.layout || "").toLowerCase().trim();
+    const layoutType: LayoutType =
+      LAYOUT_SYNONYMS[raw] ?? (i === 0 ? "title" : "content");
     const bullets = Array.isArray(s.bullets) ? s.bullets.map(String) : [];
     // Title slide carries its subtitle as the single body line.
     const content =
@@ -98,6 +126,8 @@ export function modelSlidesToDrafts(slides: ModelSlide[]) {
       speakerNotes: s.speakerNotes?.trim() || "",
       layoutType,
       chart: s.chart,
+      stats: s.stats,
+      columns: s.columns,
     };
   });
 }

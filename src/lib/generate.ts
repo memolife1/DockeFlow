@@ -1,4 +1,12 @@
-import type { ChartSpec, ChartType, LayoutType, Slide, Tone } from "./types";
+import type {
+  ChartSpec,
+  ChartType,
+  LayoutType,
+  Slide,
+  SlideColumn,
+  Stat,
+  Tone,
+} from "./types";
 import { uid } from "./utils";
 
 export interface GenerateInput {
@@ -21,6 +29,8 @@ export interface DraftSlide {
   speakerNotes: string;
   layoutType: LayoutType;
   chart?: ChartSpec | unknown;
+  stats?: unknown; // Stat[] once normalized
+  columns?: unknown; // SlideColumn[] once normalized
 }
 
 // ---- Text helpers ----------------------------------------------------------
@@ -168,6 +178,48 @@ export function buildChartFromNotes(notes: string): ChartSpec | undefined {
   };
 }
 
+// Pull up to 3 distinct headline numbers (preserving their display form, e.g.
+// "$4.2M", "38%", "3x") from the notes, for a stat-block slide.
+export function extractStats(notes: string): Stat[] {
+  const out: Stat[] = [];
+  const seenLabels = new Set<string>();
+  for (const c of clauses(notes)) {
+    const re = /(^|[^A-Za-z0-9.])(\$?\d+(?:\.\d+)?)(%|k|m|b|bn|x)?/gi;
+    let m: RegExpExecArray | null;
+    let best: { tok: string; score: number } | null = null;
+    while ((m = re.exec(c))) {
+      const numRaw = m[2];
+      const unit = (m[3] || "").toLowerCase();
+      const unitDisp = unit === "bn" ? "B" : unit ? unit.toUpperCase() : "";
+      const tok = numRaw + unitDisp;
+      const meaningful = numRaw.includes("$") || numRaw.includes(".") || !!unit;
+      const score = meaningful ? 2 : 1;
+      if (!best || score > best.score) best = { tok, score };
+    }
+    if (!best || best.score < 2) continue; // only clauses with a real stat
+    // Descriptive label only — skip bare "period + number" clauses (e.g. "Q2 1.8M").
+    const stripped = c
+      .replace(/\b(q[1-4]|fy\d{2,4}|h[12]|20\d\d)\b/gi, " ")
+      .replace(/\$?\d+(?:\.\d+)?\s?(%|k|m|b|bn|x|percent)?/gi, " ")
+      .replace(
+        /\b(up|down|to|of|the|a|is|are|was|were|by|at|in|on|our|per|reached|climbed|grew|fell|rose|after|before)\b/gi,
+        " ",
+      )
+      .split(/\s+/)
+      .filter((w) => w.length > 1)
+      .slice(0, 3)
+      .join(" ")
+      .trim();
+    if (!stripped) continue;
+    const label = tidy(stripped).slice(0, 24);
+    if (seenLabels.has(label.toLowerCase())) continue;
+    seenLabels.add(label.toLowerCase());
+    out.push({ value: best.tok, label });
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+
 // ---- Compelling "why now" subtitle (never repeats the title) ---------------
 
 export function buildSubtitle(input: GenerateInput): string {
@@ -313,6 +365,29 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
   if (chart) insight.chart = chart;
   drafts.push(insight);
 
+  // 3b) Proof in numbers (stat-block) — real stats from notes, else synthesized.
+  const noteStats = extractStats(input.notes);
+  const stats: Stat[] =
+    noteStats.length >= 2
+      ? noteStats
+      : synth
+      ? [
+          { value: synth.last, label: `${synth.noun} in Q4` },
+          { value: `${synth.growthPct}%`, label: "Growth since Q1" },
+          { value: "3", label: "Accounts driving over half of it" },
+        ]
+      : [];
+  if (stats.length >= 2) {
+    drafts.push({
+      title: `The numbers make the case in three figures`,
+      content: [],
+      stats,
+      speakerNotes:
+        "Say each number out loud, then the one sentence it implies. Numbers land harder spoken than read.",
+      layoutType: "stat-block",
+    });
+  }
+
   // 4) Implication (assertion)
   drafts.push({
     title: `Concentrated growth is a risk dressed up as a win`,
@@ -324,6 +399,33 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
     speakerNotes:
       "Make it personal to the audience's goals. The point is stakes, not analysis — why they can't let this ride.",
     layoutType: "content",
+  });
+
+  // 4b) The choice (two-column comparison) — stay vs. act.
+  drafts.push({
+    title: `The choice is between protecting the number and earning it`,
+    content: [],
+    columns: [
+      {
+        heading: "Stay the course",
+        points: [
+          "Ride the current accounts and hope they renew",
+          "Efficiency keeps slipping quarter over quarter",
+          "One churn event resets the year",
+        ],
+      },
+      {
+        heading: `Make the move`,
+        points: [
+          `Redirect effort toward ${objective}`,
+          "Fix the mid-funnel leak while momentum is high",
+          "Broaden the base so no single account is decisive",
+        ],
+      },
+    ],
+    speakerNotes:
+      "Frame it as a real fork, not a strawman. Give the safe option its due, then show why it's the riskier one.",
+    layoutType: "two-column",
   });
 
   // 5) Recommendation (section)
@@ -366,7 +468,42 @@ export function draftsToSlides(
     speakerNotes: d.speakerNotes ?? "",
     layoutType: d.layoutType,
     chart: normalizeChart(d.chart),
+    stats: normalizeStats(d.stats),
+    columns: normalizeColumns(d.columns),
   }));
+}
+
+// Defensive normalization for stat-block data (raw from the model or engine).
+export function normalizeStats(stats: unknown): Stat[] | undefined {
+  if (!Array.isArray(stats)) return undefined;
+  const out = stats
+    .map((s) => {
+      const o = s as Partial<Stat>;
+      const value = o?.value != null ? String(o.value).trim() : "";
+      const label = o?.label != null ? String(o.label).trim() : "";
+      return { value, label };
+    })
+    .filter((s) => s.value)
+    .slice(0, 4);
+  return out.length ? out : undefined;
+}
+
+// Defensive normalization for two-column comparison data.
+export function normalizeColumns(columns: unknown): SlideColumn[] | undefined {
+  if (!Array.isArray(columns)) return undefined;
+  const out = columns
+    .map((c) => {
+      const o = c as Partial<SlideColumn>;
+      return {
+        heading: o?.heading != null ? String(o.heading).trim() : "",
+        points: Array.isArray(o?.points)
+          ? o.points.map(String).filter(Boolean).slice(0, 5)
+          : [],
+      };
+    })
+    .filter((c) => c.heading || c.points.length)
+    .slice(0, 2);
+  return out.length >= 2 ? out : undefined;
 }
 
 // Defensive normalization so bad LLM chart JSON never crashes the renderer.

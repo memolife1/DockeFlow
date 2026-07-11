@@ -15,6 +15,7 @@ import type { Presentation, Slide, TemplateTheme } from "./types";
 const EMU_W = 13.33;
 const EMU_H = 7.5;
 const MARGIN = 0.6; // >= 0.5in on every edge
+const DARK = "0F172A"; // slate-900, for dark title / stat slides
 
 const hex = (c: string) => c.replace("#", "").toUpperCase();
 
@@ -56,17 +57,24 @@ export async function exportDeckToPptx(
     const s = pptx.addSlide();
     s.background = { color: "FFFFFF" };
 
+    const p = { accent, ink, muted, display, body };
     if (slide.layoutType === "title") {
-      renderTitle(pptx, s, slide, { accent, ink, display, body, muted }, options);
+      renderTitle(pptx, s, slide, p, options);
     } else if (slide.layoutType === "section") {
       renderSection(s, slide, { accent, display, body });
+    } else if (slide.layoutType === "stat-block" && slide.stats?.length) {
+      renderStatBlock(pptx, s, slide, i, ordered.length, {
+        ...p,
+        deckTitle: presentation.title,
+      });
+    } else if (slide.layoutType === "two-column" && slide.columns?.length) {
+      renderTwoColumn(pptx, s, slide, i, ordered.length, {
+        ...p,
+        deckTitle: presentation.title,
+      });
     } else {
       renderContent(pptx, s, slide, i, ordered.length, {
-        accent,
-        ink,
-        muted,
-        display,
-        body,
+        ...p,
         deckTitle: presentation.title,
       });
     }
@@ -93,10 +101,9 @@ function renderTitle(
   options: ExportOptions,
 ) {
   const hasImage = !!options.titleImageDataUri;
-  const panelW = EMU_W * 0.35;
 
   if (hasImage) {
-    // Full-bleed photo + dark overlay for legibility, then the accent panel.
+    // Full-bleed photo + dark overlay for legibility.
     s.addImage({
       data: (options.titleImageDataUri as string).replace(/^data:/, ""),
       x: 0,
@@ -110,62 +117,56 @@ function renderTitle(
       y: 0,
       w: EMU_W,
       h: EMU_H,
-      fill: { color: "000000", transparency: 45 }, // rgba(0,0,0,0.55)
+      fill: { color: "000000", transparency: 40 },
+      line: { type: "none" },
+    });
+  } else {
+    // Dark title slide with an accent bar down the left edge.
+    s.background = { color: DARK };
+    s.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: 0.16,
+      h: EMU_H,
+      fill: { color: p.accent },
       line: { type: "none" },
     });
   }
 
-  // Accent left panel (the branded colored panel from step 2).
-  s.addShape(pptx.ShapeType.rect, {
-    x: 0,
-    y: 0,
-    w: panelW,
-    h: EMU_H,
-    fill: { color: p.accent },
-    line: { type: "none" },
-  });
-
-  // Small brand mark on the panel.
+  // Brand mark, in accent (or white over a photo).
   s.addText("DECKEFLOW", {
-    x: 0.6,
+    x: MARGIN,
     y: 0.6,
-    w: panelW - 1,
+    w: 5,
     h: 0.3,
     fontFace: p.body,
     fontSize: 12,
     bold: true,
-    color: "FFFFFF",
+    color: hasImage ? "FFFFFF" : p.accent,
     charSpacing: 3,
   });
 
-  // Title + subtitle sit on the right. Over a photo they're white; on plain
-  // white they use ink / muted.
-  const textX = panelW + 0.5;
-  const textW = EMU_W - textX - MARGIN;
-  const titleColor = hasImage ? "FFFFFF" : p.ink;
-  const subColor = hasImage ? "F2F3FF" : p.muted;
-
   s.addText(slide.title, {
-    x: textX,
-    y: 2.15,
-    w: textW,
-    h: 2.4,
+    x: MARGIN,
+    y: 2.5,
+    w: EMU_W - MARGIN * 2,
+    h: 2.6,
     fontFace: p.display,
-    fontSize: 40,
+    fontSize: 44,
     bold: true,
-    color: titleColor,
+    color: "FFFFFF",
     valign: "bottom",
     lineSpacingMultiple: 1.0,
   });
   if (slide.content[0]) {
     s.addText(slide.content[0], {
-      x: textX,
-      y: 4.7,
-      w: textW,
-      h: 1.6,
+      x: MARGIN,
+      y: 5.25,
+      w: EMU_W - MARGIN * 2 - 1.5,
+      h: 1.5,
       fontFace: p.body,
       fontSize: 19,
-      color: subColor,
+      color: "CBD5E1",
       valign: "top",
       lineSpacingMultiple: 1.15,
     });
@@ -296,6 +297,206 @@ function renderContent(
     fontSize: 12,
     color: p.muted,
   });
+}
+
+// Footer with deck title + page number, shared by content-style slides.
+function addFooter(
+  s: pptxgen.Slide,
+  deckTitle: string,
+  index: number,
+  total: number,
+  body: string,
+  muted: string,
+) {
+  s.addText(deckTitle, {
+    x: MARGIN,
+    y: EMU_H - 0.5,
+    w: 8,
+    h: 0.3,
+    fontFace: body,
+    fontSize: 12,
+    color: muted,
+  });
+  s.addText(
+    `${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`,
+    {
+      x: EMU_W - 2.2,
+      y: EMU_H - 0.5,
+      w: 1.6,
+      h: 0.3,
+      align: "right",
+      fontFace: body,
+      fontSize: 12,
+      color: muted,
+    },
+  );
+}
+
+// Dark stat-block slide: assertion headline over a row of big accent numbers.
+function renderStatBlock(
+  pptx: pptxgen,
+  s: pptxgen.Slide,
+  slide: Slide,
+  index: number,
+  total: number,
+  p: Palette & { deckTitle: string },
+) {
+  s.background = { color: DARK };
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: EMU_W,
+    h: 0.11,
+    fill: { color: p.accent },
+    line: { type: "none" },
+  });
+
+  s.addText(slide.title, {
+    x: MARGIN,
+    y: 0.55,
+    w: EMU_W - MARGIN * 2,
+    h: 1.3,
+    fontFace: p.display,
+    fontSize: 30,
+    bold: true,
+    color: "FFFFFF",
+    valign: "top",
+    lineSpacingMultiple: 1.02,
+  });
+
+  const stats = slide.stats ?? [];
+  const n = Math.min(stats.length, 4);
+  const gap = 0.4;
+  const colW = (EMU_W - MARGIN * 2 - gap * (n - 1)) / n;
+  stats.slice(0, n).forEach((stat, i) => {
+    const x = MARGIN + i * (colW + gap);
+    // Card
+    s.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y: 2.5,
+      w: colW,
+      h: 3.4,
+      rectRadius: 0.1,
+      fill: { color: "1E293B" },
+      line: { color: "334155", width: 1 },
+    });
+    s.addShape(pptx.ShapeType.rect, {
+      x,
+      y: 2.5,
+      w: colW,
+      h: 0.08,
+      fill: { color: p.accent },
+      line: { type: "none" },
+    });
+    s.addText(stat.value, {
+      x,
+      y: 2.9,
+      w: colW,
+      h: 1.5,
+      align: "center",
+      valign: "middle",
+      fontFace: p.display,
+      fontSize: 44,
+      bold: true,
+      color: "FFFFFF",
+    });
+    s.addText(stat.label, {
+      x: x + 0.2,
+      y: 4.5,
+      w: colW - 0.4,
+      h: 1.2,
+      align: "center",
+      valign: "top",
+      fontFace: p.body,
+      fontSize: 13,
+      color: "94A3B8",
+      lineSpacingMultiple: 1.1,
+    });
+  });
+
+  addFooter(s, p.deckTitle, index, total, p.body, "64748B");
+}
+
+// Two-column comparison: light left panel vs. dark right panel.
+function renderTwoColumn(
+  pptx: pptxgen,
+  s: pptxgen.Slide,
+  slide: Slide,
+  index: number,
+  total: number,
+  p: Palette & { deckTitle: string },
+) {
+  s.addShape(pptx.ShapeType.rect, {
+    x: 0,
+    y: 0,
+    w: EMU_W,
+    h: 0.11,
+    fill: { color: p.accent },
+    line: { type: "none" },
+  });
+  s.addText(slide.title, {
+    x: MARGIN,
+    y: 0.55,
+    w: EMU_W - MARGIN * 2,
+    h: 1.3,
+    fontFace: p.display,
+    fontSize: 28,
+    bold: true,
+    color: p.ink,
+    valign: "top",
+    lineSpacingMultiple: 1.02,
+  });
+
+  const cols = slide.columns ?? [];
+  const top = 2.2;
+  const h = EMU_H - top - 0.8;
+  const gap = 0.5;
+  const colW = (EMU_W - MARGIN * 2 - gap) / 2;
+
+  cols.slice(0, 2).forEach((col, i) => {
+    const x = MARGIN + i * (colW + gap);
+    const dark = i === 1;
+    s.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y: top,
+      w: colW,
+      h,
+      rectRadius: 0.08,
+      fill: { color: dark ? DARK : "F8FAFC" },
+      line: { color: dark ? DARK : "E2E8F0", width: 1 },
+    });
+    s.addText(col.heading, {
+      x: x + 0.4,
+      y: top + 0.35,
+      w: colW - 0.8,
+      h: 0.6,
+      fontFace: p.display,
+      fontSize: 15,
+      bold: true,
+      color: dark ? "FFFFFF" : p.accent,
+    });
+    if (col.points.length) {
+      s.addText(
+        col.points.map((pt) => ({
+          text: pt,
+          options: { bullet: { code: "2022", indent: 16 }, paraSpaceAfter: 10 },
+        })),
+        {
+          x: x + 0.4,
+          y: top + 1.15,
+          w: colW - 0.8,
+          h: h - 1.5,
+          fontFace: p.body,
+          fontSize: 13,
+          color: dark ? "CBD5E1" : "334155",
+          valign: "top",
+          lineSpacingMultiple: 1.1,
+        },
+      );
+    }
+  });
+
+  addFooter(s, p.deckTitle, index, total, p.body, p.muted);
 }
 
 function renderChart(

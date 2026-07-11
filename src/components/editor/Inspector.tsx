@@ -11,6 +11,7 @@ const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "section", label: "Section divider" },
   { value: "content", label: "Content" },
   { value: "two-column", label: "Two column" },
+  { value: "stat-block", label: "Stat block" },
   { value: "quote", label: "Quote" },
   { value: "closing", label: "Closing" },
 ];
