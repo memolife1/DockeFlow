@@ -4,16 +4,25 @@ import type { LayoutType, Slide } from "@/lib/types";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { IconPlus, IconTrash, IconCopy } from "@/components/ui/icons";
+import { resolveLayoutId } from "@/lib/layouts/specs";
 
 const LAYOUTS: { value: LayoutType; label: string }[] = [
-  { value: "title", label: "Title" },
+  { value: "title_hero", label: "Title — hero" },
+  { value: "title_split", label: "Title — split panel" },
   { value: "agenda", label: "Agenda" },
-  { value: "section", label: "Section divider" },
-  { value: "content", label: "Content" },
-  { value: "two-column", label: "Two column" },
-  { value: "stat-block", label: "Stat block" },
-  { value: "quote", label: "Quote" },
-  { value: "closing", label: "Closing" },
+  { value: "section_divider", label: "Section divider" },
+  { value: "content_bullets", label: "Content — bullets" },
+  { value: "content_image_right", label: "Content — image right" },
+  { value: "content_image_left", label: "Content — image left" },
+  { value: "two_column_compare", label: "Two-column compare" },
+  { value: "stat_kpi", label: "Stat / KPI cards" },
+  { value: "timeline_horizontal", label: "Timeline" },
+  { value: "process_steps", label: "Process steps" },
+  { value: "funnel", label: "Funnel" },
+  { value: "swot_matrix", label: "SWOT matrix" },
+  { value: "chart_focus", label: "Chart focus" },
+  { value: "team_grid", label: "Team grid" },
+  { value: "closing_cta", label: "Closing / next steps" },
 ];
 
 export function Inspector({
@@ -50,7 +59,7 @@ export function Inspector({
         <Field label="Layout" htmlFor="layout">
           <Select
             id="layout"
-            value={slide.layoutType}
+            value={resolveLayoutId(slide)}
             onChange={(e) => onChange({ layoutType: e.target.value as LayoutType })}
           >
             {LAYOUTS.map((l) => (

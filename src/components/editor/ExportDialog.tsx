@@ -51,21 +51,24 @@ export function ExportDialog({
         const template =
           getTemplate(pres.templateId, uploaded) ?? BUILT_IN_TEMPLATES[0];
 
-        // Optional Pexels title-slide background. Silent fallback on any issue.
-        let titleImageDataUri: string | undefined;
-        if (pres.useStockImages) {
-          try {
-            const q = [pres.title, pres.goal].filter(Boolean).join(" ").slice(0, 80);
-            const res = await fetch(`/api/stock-image?q=${encodeURIComponent(q)}`);
-            const data = (await res.json()) as { image: string | null };
-            if (data.image) titleImageDataUri = data.image;
-          } catch {
-            /* fall back to the colored-panel title */
-          }
-        }
+        // Resolve slide images to data URIs via the server proxy so they can
+        // be embedded. Silent fallback (solid theme fill) on any failure.
+        const imageData: Record<string, string> = {};
+        const urls = [...new Set(slides.map((s) => s.imageUrl).filter(Boolean))] as string[];
+        await Promise.all(
+          urls.map(async (url) => {
+            try {
+              const res = await fetch(`/api/stock-image?src=${encodeURIComponent(url)}`);
+              const data = (await res.json()) as { image: string | null };
+              if (data.image) imageData[url] = data.image;
+            } catch {
+              /* solid fallback */
+            }
+          }),
+        );
 
         // Builds a real .pptx (with native charts) and downloads it.
-        await exportDeckToPptx(pres, slides, template.theme, { titleImageDataUri });
+        await exportDeckToPptx(pres, slides, template.theme, { imageData });
       } else {
         // PDF / share-link remain placeholder flows in this MVP.
         await fetch("/api/export", {
@@ -168,6 +171,10 @@ export function ExportDialog({
               )}
             </button>
           ))}
+          <p className="pt-1 text-[12px] text-ink-muted">
+            Export produces native editable PowerPoint objects — text, shapes,
+            and charts stay fully editable in PowerPoint.
+          </p>
         </div>
       )}
     </Modal>

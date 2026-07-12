@@ -17,7 +17,30 @@ export type Tone =
   | "friendly"
   | "visionary";
 
-export type LayoutType =
+// New-generation layout ids (the premium layout library). One spec per id in
+// lib/layouts/specs.ts; both the HTML preview and the PPTX export render from
+// the same spec.
+export type LayoutId =
+  | "title_hero"
+  | "title_split"
+  | "agenda"
+  | "section_divider"
+  | "content_bullets"
+  | "content_image_right"
+  | "content_image_left"
+  | "two_column_compare"
+  | "stat_kpi"
+  | "timeline_horizontal"
+  | "process_steps"
+  | "funnel"
+  | "swot_matrix"
+  | "chart_focus"
+  | "team_grid"
+  | "closing_cta";
+
+// Legacy layout names (existing decks). Mapped to the nearest LayoutId at
+// render time — see resolveLayoutId() in lib/layouts/specs.ts.
+export type LegacyLayoutType =
   | "title"
   | "agenda"
   | "section"
@@ -26,6 +49,8 @@ export type LayoutType =
   | "stat-block"
   | "quote"
   | "closing";
+
+export type LayoutType = LegacyLayoutType | LayoutId;
 
 // Big-number highlight shown on a stat-block slide.
 export interface Stat {
@@ -37,6 +62,34 @@ export interface Stat {
 export interface SlideColumn {
   heading: string;
   points: string[];
+}
+
+// Structured content for the richer layouts.
+export interface TimelineItem {
+  label: string; // milestone name, e.g. "Q1 — Pilot"
+  detail?: string;
+}
+
+export interface ProcessStep {
+  label: string;
+  detail?: string;
+}
+
+export interface FunnelStage {
+  label: string;
+  value?: string; // e.g. "1,200 leads"
+}
+
+export interface SwotContent {
+  s: string[];
+  w: string[];
+  o: string[];
+  t: string[];
+}
+
+export interface TeamMember {
+  name: string;
+  role: string;
 }
 
 export type TemplateSourceType = "built-in" | "uploaded";
@@ -89,6 +142,16 @@ export interface Slide {
   chart?: ChartSpec; // present on data-oriented slides
   stats?: Stat[]; // present on stat-block slides
   columns?: SlideColumn[]; // present on two-column comparison slides
+  // Rich-layout content (all optional; layouts fall back gracefully).
+  icons?: (string | null)[]; // semantic icon name per content bullet
+  timeline?: TimelineItem[];
+  steps?: ProcessStep[];
+  funnel?: FunnelStage[];
+  swot?: SwotContent;
+  team?: TeamMember[];
+  imageQuery?: string; // stock-photo search for image zones
+  imageUrl?: string; // resolved image URL (set at generation time)
+  sectionNumber?: number; // for section_divider numbering
 }
 
 export interface Template {
@@ -109,6 +172,20 @@ export interface TemplateTheme {
   fontFamily: "sans" | "serif";
   // A short label describing the visual character (shown in the picker).
   character: string;
+  // Brand overrides extracted from an uploaded .pptx (Phase 4). Roles map to
+  // the layout system's ColorRole names.
+  brand?: {
+    name?: string;
+    roles?: {
+      primary?: string;
+      dark?: string;
+      accent?: string;
+      surface?: string;
+    };
+    fontHead?: string;
+    fontBody?: string;
+    logoDataUri?: string;
+  };
 }
 
 export interface UploadedStyleReference {

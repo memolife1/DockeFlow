@@ -1,8 +1,29 @@
 import type { Slide, TemplateTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { buildThemeSpec } from "@/lib/layouts/theme";
+import { resolveSlide } from "@/lib/layouts/specs";
+import {
+  CANVAS_H,
+  CANVAS_W,
+  type LayoutEl,
+  type ThemeSpec,
+} from "@/lib/layouts/types";
+import { iconSvg } from "@/lib/icons";
+import { MiniChart } from "./MiniChart";
 
-// Renders a single slide at 16:9 using the template theme.
-// This is the shared surface used by the editor canvas, preview, and landing.
+// ---------------------------------------------------------------------------
+// HTML preview renderer. Consumes the SAME resolved layout specs as the PPTX
+// export (lib/layouts/specs.ts): inches -> container %, points -> cqw. Any
+// layout change automatically applies to both outputs.
+// ---------------------------------------------------------------------------
+
+// 1pt on a 13.33in-wide slide, as a fraction of container width.
+// (13.33in * 72pt/in = 959.76pt across the full width.)
+const PT = 100 / (CANVAS_W * 72);
+
+const px = (inches: number, axis: "x" | "y") =>
+  `${(inches / (axis === "x" ? CANVAS_W : CANVAS_H)) * 100}%`;
+
 export function SlideView({
   slide,
   theme,
@@ -16,146 +37,196 @@ export function SlideView({
   total?: number;
   className?: string;
 }) {
-  const isTitle = slide.layoutType === "title";
-  const isSection = slide.layoutType === "section";
-  const isClosing = slide.layoutType === "closing";
-  const hasColumns =
-    slide.layoutType === "two-column" && !!slide.columns?.length;
-  const isStat = slide.layoutType === "stat-block" && !!slide.stats?.length;
-  const twoCol = slide.layoutType === "two-column" && !hasColumns;
-  const fontClass = theme.fontFamily === "serif" ? "font-serif" : "font-sans";
+  const spec = buildThemeSpec(theme);
+  const resolved = resolveSlide(slide, {
+    index: index ?? slide.orderIndex ?? 0,
+    total: total ?? 1,
+    deckTitle: "",
+  });
 
   return (
     <div
       className={cn(
-        "relative flex aspect-[16/9] w-full flex-col overflow-hidden [container-type:inline-size]",
-        fontClass,
+        "relative aspect-[16/9] w-full overflow-hidden [container-type:inline-size]",
         className,
       )}
-      style={{ background: theme.surface, color: theme.ink }}
+      style={{
+        background: `#${spec.colors[resolved.background]}`,
+        fontFamily: spec.fontBodyCss,
+      }}
     >
-      {/* accent rule */}
-      <div
-        className="absolute left-0 top-0 h-full w-[6px]"
-        style={{ background: theme.accent }}
-      />
-
-      <div className="flex h-full flex-col px-[7%] py-[6%] pl-[9%]">
-        {/* header row */}
-        <div className="flex items-center justify-between">
-          <span
-            className="text-[2.1cqw] font-semibold uppercase tracking-[0.16em]"
-            style={{ color: theme.accent, letterSpacing: "0.14em" }}
-          >
-            {isTitle ? "DeckeFlow" : slide.layoutType.replace("-", " ")}
-          </span>
-          {typeof index === "number" && typeof total === "number" && (
-            <span
-              className="text-[2cqw] tabular-nums opacity-40"
-            >
-              {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-            </span>
-          )}
-        </div>
-
-        {/* body */}
-        {isTitle || isSection ? (
-          <div className="flex flex-1 flex-col justify-center">
-            <h2
-              className="max-w-[85%] text-[6.4cqw] font-semibold leading-[1.05] tracking-[-0.02em]"
-            >
-              {slide.title}
-            </h2>
-            {slide.content[0] && (
-              <p className="mt-[3%] max-w-[70%] text-[3cqw] leading-snug opacity-70">
-                {slide.content[0]}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col pt-[3%]">
-            <h2 className="text-[4.4cqw] font-semibold leading-[1.1] tracking-[-0.015em]">
-              {slide.title}
-            </h2>
-
-            {isStat ? (
-              <div className="mt-[5%] grid flex-1 auto-cols-fr grid-flow-col items-center gap-[4%]">
-                {slide.stats!.map((stat, i) => (
-                  <div key={i} className="flex flex-col">
-                    <div
-                      className="text-[8.5cqw] font-bold leading-none tracking-[-0.03em]"
-                      style={{ color: theme.accent }}
-                    >
-                      {stat.value}
-                    </div>
-                    <div className="mt-[8%] text-[2.4cqw] leading-snug opacity-70">
-                      {stat.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : hasColumns ? (
-              <div className="mt-[4%] grid flex-1 grid-cols-2 gap-[5%]">
-                {slide.columns!.map((col, ci) => (
-                  <div key={ci} className="flex flex-col">
-                    <div
-                      className="text-[2.9cqw] font-semibold uppercase tracking-[0.08em]"
-                      style={{ color: theme.accent }}
-                    >
-                      {col.heading}
-                    </div>
-                    <div className="mt-[6%] space-y-[4%]">
-                      {col.points.map((pt, pi) => (
-                        <div
-                          key={pi}
-                          className="flex gap-[4%] text-[2.6cqw] leading-snug"
-                        >
-                          <span
-                            className="mt-[0.7em] h-[0.4em] w-[0.4em] shrink-0 rounded-full"
-                            style={{ background: theme.accent }}
-                          />
-                          <span className="opacity-90">{pt}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  "mt-[4%] flex-1",
-                  twoCol
-                    ? "grid grid-cols-2 gap-x-[6%] gap-y-[2%]"
-                    : "space-y-[2.4%]",
-                )}
-              >
-                {slide.content.map((line, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-[2%] text-[2.9cqw] leading-snug"
-                  >
-                    <span
-                      className="mt-[0.7em] h-[0.42em] w-[0.42em] shrink-0 rounded-full"
-                      style={{ background: theme.accent }}
-                    />
-                    <span className="opacity-90">{line}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {isClosing && (
-              <div
-                className="mt-[3%] h-[3px] w-[22%]"
-                style={{ background: theme.accent }}
-              />
-            )}
-          </div>
-        )}
-      </div>
+      {resolved.elements.map((el, i) => (
+        <El key={i} el={el} spec={spec} />
+      ))}
     </div>
   );
+}
+
+function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
+  const base: React.CSSProperties = {
+    position: "absolute",
+    left: px(el.x, "x"),
+    top: px(el.y, "y"),
+    width: px(el.w, "x"),
+    height: px(el.h, "y"),
+  };
+
+  if (el.kind === "shape") {
+    const style: React.CSSProperties = {
+      ...base,
+      background: `#${spec.colors[el.fill]}`,
+      opacity: el.transparency ? 1 - el.transparency / 100 : 1,
+    };
+    if (el.shape === "roundRect")
+      style.borderRadius = `${((el.radius ?? 0.09) / CANVAS_W) * 100}cqw`;
+    if (el.shape === "ellipse") style.borderRadius = "50%";
+    if (el.shape === "chevron")
+      style.clipPath =
+        "polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%, 18% 50%)";
+    if (el.shape === "trapezoid")
+      // flipV -> wide top, narrow bottom (funnel stage)
+      style.clipPath = el.flipV
+        ? "polygon(0 0, 100% 0, 86% 100%, 14% 100%)"
+        : "polygon(14% 0, 86% 0, 100% 100%, 0 100%)";
+    if (el.shadow) style.boxShadow = "0 3px 9px rgba(26,34,51,0.20)";
+    if (el.line)
+      style.border = `${el.line.width}px solid #${spec.colors[el.line.color]}`;
+    return <div style={style} />;
+  }
+
+  if (el.kind === "text") {
+    const justify =
+      el.valign === "middle"
+        ? "center"
+        : el.valign === "bottom"
+        ? "flex-end"
+        : "flex-start";
+    return (
+      <div
+        style={{
+          ...base,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: justify,
+          textAlign: el.align ?? "left",
+          color: `#${spec.colors[el.color]}`,
+          fontSize: `${el.size * PT}cqw`,
+          fontWeight: el.bold ? 700 : 400,
+          fontStyle: el.italic ? "italic" : undefined,
+          fontFamily: el.font === "head" ? spec.fontHeadCss : spec.fontBodyCss,
+          lineHeight: el.lineSpacing ?? 1.15,
+          letterSpacing: el.charSpacing
+            ? `${el.charSpacing * PT}cqw`
+            : undefined,
+          overflow: "hidden",
+        }}
+      >
+        <span
+          style={
+            el.maxLines
+              ? {
+                  display: "-webkit-box",
+                  WebkitLineClamp: el.maxLines,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }
+              : undefined
+          }
+        >
+          {el.text}
+        </span>
+      </div>
+    );
+  }
+
+  if (el.kind === "icon") {
+    const svg = iconSvg(el.icon, spec.colors[el.color], 48);
+    if (!svg) {
+      return (
+        <div
+          style={{
+            ...base,
+            background: `#${spec.colors[el.color]}`,
+            borderRadius: "22%",
+          }}
+        />
+      );
+    }
+    return (
+      <div
+        style={{ ...base, display: "flex" }}
+        dangerouslySetInnerHTML={{
+          __html: svg.replace(
+            /<svg /,
+            '<svg style="width:100%;height:100%" ',
+          ),
+        }}
+      />
+    );
+  }
+
+  if (el.kind === "image") {
+    if (el.url) {
+      return (
+        <div style={base}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={el.url}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+          {el.overlay && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `#${spec.colors[el.overlay.color]}`,
+                opacity: 1 - el.overlay.transparency / 100,
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+    return (
+      <div
+        style={{
+          ...base,
+          background: `#${spec.colors[el.fallback]}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {el.query && (
+          <span
+            style={{
+              color: `#${spec.colors.textMuted}`,
+              fontSize: `${10 * PT}cqw`,
+              textAlign: "center",
+              padding: "0 8%",
+            }}
+          >
+            {el.query}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (el.kind === "chart") {
+    return (
+      <div style={base}>
+        <MiniChart
+          chart={el.chart}
+          palette={spec.chartPalette}
+          mutedHex={spec.colors.textMuted}
+        />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // Scaled, non-interactive thumbnail wrapper.
