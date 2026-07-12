@@ -1,24 +1,42 @@
 import type { GenerateInput } from "./generate";
-import type { LayoutType } from "./types";
+import { ICON_NAMES } from "./icons";
+import { isLayoutId } from "./layouts/specs";
+import type {
+  DraftSlide as DraftSlideT,
+} from "./generate";
+import type { LayoutId } from "./types";
 
 // System prompt for slide generation. Instructs the model to write real,
-// specific business content, never repeat the title in the subtitle, and to
-// detect data and return chart specs (labels + values) for those slides.
-export const SYSTEM_PROMPT = `You are a senior management consultant and presentation strategist — the kind a company brings in for a high-stakes board or executive session. You build decks that make an argument and drive a decision. You return ONLY valid JSON — no prose, no markdown fences.
+// specific business content, select from the 16 premium layouts, attach
+// icons/images/chart data per layout's slots, and vary composition like a
+// professionally designed deck (never the same layout twice in a row, dark/
+// light rhythm, at least one stat_kpi and one visual layout).
 
-Produce a deck of 6–9 slides as JSON matching exactly this shape:
+const ICON_LIST = ICON_NAMES.join(", ");
+
+export const SYSTEM_PROMPT = `You are a senior management consultant and presentation designer — the kind a company brings in for a high-stakes board session AND to make the deck look like a premium, professionally designed template. You build decks that make an argument, drive a decision, and look expensive. You return ONLY valid JSON — no prose, no markdown fences.
+
+Produce a deck of 8–14 slides as JSON matching exactly this shape:
 {
   "slides": [
     {
+      "layoutId": "one of the 16 layout ids below",
       "title": "string — see HEADLINE rules",
-      "subtitle": "string — ONLY on the first (title) slide",
-      "layoutType": "title | content | two-column | stat-block | section | closing",
+      "subtitle": "string — ONLY on title_hero/title_split, the first slide",
       "bullets": ["string", ...],
+      "icons": ["iconName", ...],
       "stats": [{ "value": "47%", "label": "what the number means" }],
       "columns": [
         { "heading": "Left heading", "points": ["...", "..."] },
         { "heading": "Right heading", "points": ["...", "..."] }
       ],
+      "timeline": [{ "label": "Q1 — Pilot", "detail": "short detail" }],
+      "steps": [{ "label": "Qualify", "detail": "short detail" }],
+      "funnel": [{ "label": "Leads", "value": "1,240" }],
+      "swot": { "s": ["..."], "w": ["..."], "o": ["..."], "t": ["..."] },
+      "team": [{ "name": "Full Name", "role": "Title" }],
+      "imageQuery": "2-4 word photo search, only for image-zone layouts",
+      "sectionNumber": 1,
       "speakerNotes": "string — the verbal 'so what', see rules",
       "chart": {
         "type": "bar | line | pie",
@@ -30,18 +48,35 @@ Produce a deck of 6–9 slides as JSON matching exactly this shape:
   ]
 }
 
-LAYOUTS — use the right one for the content, and vary them:
-- "title": opening slide (has subtitle). Exactly one, first.
-- "content": an assertion headline + 3–5 evidence bullets. Optionally a chart.
-- "two-column": a comparison/contrast — provide "columns" (exactly 2, each with a heading + 2–4 points). e.g. today vs. proposed, risk vs. upside.
-- "stat-block": 2–3 headline numbers — provide "stats" (each value + label). Use for the proof-point slide.
-- "section": a divider that names the next act (0–1 bullets).
-- "closing": the decision/next steps — bullets become an ordered ask.
-Every deck MUST include at least one "stat-block", one "two-column", and one "section". Populate "stats" only on stat-block slides and "columns" only on two-column slides.
+THE 16 LAYOUTS — pick the one whose slots actually fit the content:
+- title_hero: opening slide. subtitle required. Exactly one, first slide.
+- title_split: an alternative opening/part-break with a strong one-line statement + subtitle.
+- agenda: numbered list of what the deck covers — bullets only, 4-8 short items.
+- section_divider: names the next act. title + optional one-line bullet + sectionNumber (1, 2, 3...).
+- content_bullets: assertion headline + 3-5 evidence bullets. Give each bullet an icon from the list below.
+- content_image_right / content_image_left: text (3-4 bullets, icons) + imageQuery for a supporting photo.
+- two_column_compare: comparison/contrast — "columns" (exactly 2, each a heading + 2-4 points). e.g. today vs proposed, risk vs upside.
+- stat_kpi: 3-4 headline numbers — "stats" (value + label). The proof-point slide.
+- timeline_horizontal: 4-6 chronological milestones — "timeline" (label + short detail).
+- process_steps: 3-5 sequential steps/stages — "steps" (label + short detail).
+- funnel: 3-4 narrowing stages with a metric — "funnel" (label + value).
+- swot_matrix: strengths/weaknesses/opportunities/threats — "swot" with 2-3 short points each.
+- chart_focus: a data story — "chart" plus 2-3 short takeaway bullets (icons ok).
+- team_grid: 3-4 people — "team" (name + role). Only use if the topic involves a named team/org.
+- closing_cta: final decision/next steps — bullets become an ordered ask (3-4 items).
+
+ICON NAMES (use exactly these, one per bullet where a layout's rule calls for it — omit or use null when a bullet has no natural icon): ${ICON_LIST}
+
+LAYOUT SELECTION RULES:
+- NEVER use the same layoutId on two consecutive slides.
+- The deck MUST include at least one stat_kpi slide AND at least one of timeline_horizontal / process_steps / funnel / swot_matrix.
+- Alternate dark and light moods across the deck: title_hero, title_split, section_divider, and closing_cta render on dark backgrounds — space them out (e.g. every 4-6 slides) rather than clustering.
+- Use two_column_compare, chart_focus, and team_grid only when the content genuinely calls for a comparison, a data story, or a named team.
+- Do not use team_grid unless the input clearly involves specific named people.
 
 RULES — follow every one:
 
-1. TITLE SLIDE + SUBTITLE. Slide 1 is layoutType "title". Its "subtitle" must be a genuinely compelling line that answers: "Why does this matter right now, to THIS specific audience?" — the stakes, the timing, the decision on the table. It must NOT restate or lightly reword the title. (Bad: title "Q3 Sales Review", subtitle "A review of Q3 sales". Good subtitle: "We beat plan on revenue but win rates are slipping — here's what to fix before Q4 closes.")
+1. TITLE SLIDE + SUBTITLE. The first slide is title_hero or title_split. Its "subtitle" must be a genuinely compelling line that answers: "Why does this matter right now, to THIS specific audience?" — the stakes, the timing, the decision on the table. It must NOT restate or lightly reword the title. (Bad: title "Q3 Sales Review", subtitle "A review of Q3 sales". Good subtitle: "We beat plan on revenue but win rates are slipping — here's what to fix before Q4 closes.")
 
 2. NARRATIVE ARC. Order the slides as an argument, not a table of contents: context (where we are) -> insight (the non-obvious thing the data shows) -> implication (what it means / the stakes) -> recommendation (what to do) -> next steps (who does what by when). Adapt to the topic; never emit a generic "Overview / Key Points / Summary" skeleton.
 
@@ -51,17 +86,17 @@ RULES — follow every one:
    - NOT "Financials" -> "Revenue is up 40% while CAC has doubled."
    A reader skimming only the headlines should get the whole argument.
 
-4. BULLETS SUPPORT THE ASSERTION. Each content slide's bullets back up its headline with specific evidence: real data, named examples, concrete observations, mechanisms, or trade-offs. Ban generic filler ("leverage synergies", "drive growth", "align stakeholders", restating the headline). 3–5 bullets on content slides; title and section slides take 0–1.
+4. BULLETS SUPPORT THE ASSERTION. Each content slide's bullets back up its headline with specific evidence: real data, named examples, concrete observations, mechanisms, or trade-offs. Ban generic filler ("leverage synergies", "drive growth", "align stakeholders", restating the headline).
 
-5. CHARTS ON DATA. Flag EVERY slide whose point involves numbers, comparisons, trends over time, or proportions, and attach a "chart":
+5. CHARTS ON DATA. For chart_focus (and any slide where the point is fundamentally a trend/comparison/proportion), attach a "chart":
    - comparison across categories -> "bar"
    - a value moving over time (months, quarters, years) -> "line"
    - parts of a whole / mix / share -> "pie" (single series)
-   Use the user's real numbers when provided; otherwise use realistic, clearly-illustrative figures that make the headline's point. labels.length >= 2 and must equal each series' values length. Don't force a chart where data isn't the point.
+   Use the user's real numbers when provided; otherwise use realistic, clearly-illustrative figures that make the headline's point. labels.length >= 2 and must equal each series' values length.
 
 6. SPEAKER NOTES = THE "SO WHAT". Every slide gets speakerNotes telling the presenter what to emphasize OUT LOUD that is not written on the slide — the interpretation, the risk, the number to land on, the transition to the next slide. Not a re-read of the bullets.
 
-7. Return 6–9 slides. Output strict JSON only.`;
+7. Return 8-14 slides. Output strict JSON only.`;
 
 export function buildUserMessage(input: GenerateInput): string {
   const lines = [
@@ -80,54 +115,146 @@ export function buildUserMessage(input: GenerateInput): string {
 export interface ModelSlide {
   title?: string;
   subtitle?: string;
-  layoutType?: string;
-  layout?: string; // tolerated synonym for layoutType
+  layoutId?: string;
+  layoutType?: string; // tolerated legacy field name
+  layout?: string; // tolerated synonym
   bullets?: unknown;
+  icons?: unknown;
   stats?: unknown;
   columns?: unknown;
+  timeline?: unknown;
+  steps?: unknown;
+  funnel?: unknown;
+  swot?: unknown;
+  team?: unknown;
+  imageQuery?: unknown;
+  sectionNumber?: unknown;
   speakerNotes?: string;
   chart?: unknown;
 }
 
-// Accept both the app's names and common synonyms the model may emit.
-const LAYOUT_SYNONYMS: Record<string, LayoutType> = {
-  title: "title",
+// Legacy layout names -> new layout ids, tolerated from older prompts/models.
+const LAYOUT_SYNONYMS: Record<string, LayoutId> = {
+  title: "title_hero",
+  title_hero: "title_hero",
+  title_split: "title_split",
   agenda: "agenda",
-  content: "content",
-  bullets: "content",
-  "two-column": "two-column",
-  two_column: "two-column",
-  twocolumn: "two-column",
-  comparison: "two-column",
-  "stat-block": "stat-block",
-  stat_block: "stat-block",
-  stats: "stat-block",
-  section: "section",
-  section_break: "section",
-  "section-break": "section",
-  quote: "quote",
-  closing: "closing",
-  cta: "closing",
-  summary: "closing",
+  content: "content_bullets",
+  bullets: "content_bullets",
+  content_bullets: "content_bullets",
+  content_image_right: "content_image_right",
+  content_image_left: "content_image_left",
+  "two-column": "two_column_compare",
+  two_column: "two_column_compare",
+  two_column_compare: "two_column_compare",
+  comparison: "two_column_compare",
+  "stat-block": "stat_kpi",
+  stat_block: "stat_kpi",
+  stat_kpi: "stat_kpi",
+  stats: "stat_kpi",
+  section: "section_divider",
+  section_break: "section_divider",
+  section_divider: "section_divider",
+  quote: "section_divider",
+  timeline: "timeline_horizontal",
+  timeline_horizontal: "timeline_horizontal",
+  process: "process_steps",
+  process_steps: "process_steps",
+  funnel: "funnel",
+  swot: "swot_matrix",
+  swot_matrix: "swot_matrix",
+  chart_focus: "chart_focus",
+  team: "team_grid",
+  team_grid: "team_grid",
+  closing: "closing_cta",
+  closing_cta: "closing_cta",
+  cta: "closing_cta",
+  summary: "closing_cta",
 };
 
-export function modelSlidesToDrafts(slides: ModelSlide[]) {
-  return slides.map((s, i) => {
-    const raw = (s.layoutType || s.layout || "").toLowerCase().trim();
-    const layoutType: LayoutType =
-      LAYOUT_SYNONYMS[raw] ?? (i === 0 ? "title" : "content");
-    const bullets = Array.isArray(s.bullets) ? s.bullets.map(String) : [];
-    // Title slide carries its subtitle as the single body line.
-    const content =
-      layoutType === "title" && s.subtitle ? [s.subtitle, ...bullets] : bullets;
+function toStr(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
+function strArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.map(String).filter(Boolean) : [];
+}
+
+const DARK_LAYOUTS = new Set<LayoutId>([
+  "title_hero",
+  "title_split",
+  "section_divider",
+  "closing_cta",
+]);
+
+export function modelSlidesToDrafts(slides: ModelSlide[]): DraftSlideT[] {
+  const drafts = slides.map((s, i) => {
+    const raw = (s.layoutId || s.layoutType || s.layout || "")
+      .toString()
+      .toLowerCase()
+      .trim();
+    let layoutId: LayoutId =
+      LAYOUT_SYNONYMS[raw] ??
+      (isLayoutId(raw) ? raw : i === 0 ? "title_hero" : "content_bullets");
+
+    const bullets = strArray(s.bullets);
+    const icons = Array.isArray(s.icons)
+      ? s.icons.map((v) => (typeof v === "string" && v.trim() ? v.trim() : null))
+      : undefined;
+    const isTitleLayout = layoutId === "title_hero" || layoutId === "title_split";
+    const content = isTitleLayout && s.subtitle ? [s.subtitle, ...bullets] : bullets;
+
     return {
-      title: s.title?.trim() || (i === 0 ? "Untitled" : "Slide"),
+      title: toStr(s.title).trim() || (i === 0 ? "Untitled" : "Slide"),
       content,
-      speakerNotes: s.speakerNotes?.trim() || "",
-      layoutType,
+      speakerNotes: toStr(s.speakerNotes).trim(),
+      layoutType: layoutId,
       chart: s.chart,
       stats: s.stats,
       columns: s.columns,
-    };
+      icons,
+      timeline: s.timeline,
+      steps: s.steps,
+      funnel: s.funnel,
+      swot: s.swot,
+      team: s.team,
+      imageQuery: typeof s.imageQuery === "string" ? s.imageQuery : undefined,
+      sectionNumber:
+        typeof s.sectionNumber === "number" ? s.sectionNumber : undefined,
+    } satisfies DraftSlideT;
   });
+
+  // Safety net: downgrade a layout that repeats the previous slide's layout,
+  // so a model that ignores the "never twice in a row" rule doesn't ship a
+  // visually repetitive deck. Downgrades to content_bullets, which always
+  // renders sensibly from title+bullets.
+  for (let i = 1; i < drafts.length; i++) {
+    if (drafts[i].layoutType === drafts[i - 1].layoutType) {
+      drafts[i].layoutType = "content_bullets";
+    }
+  }
+
+  return drafts;
 }
+
+// True if the deck satisfies the "at least one stat_kpi + one visual layout"
+// requirement. Used by the generation route to decide whether to inject a
+// synthesized stat/visual slide as a safety net.
+export function hasRequiredLayouts(drafts: DraftSlideT[]): {
+  hasStat: boolean;
+  hasVisual: boolean;
+} {
+  const ids = drafts.map((d) => d.layoutType);
+  const visual: LayoutId[] = [
+    "timeline_horizontal",
+    "process_steps",
+    "funnel",
+    "swot_matrix",
+  ];
+  return {
+    hasStat: ids.includes("stat_kpi"),
+    hasVisual: ids.some((id) => visual.includes(id as LayoutId)),
+  };
+}
+
+export { DARK_LAYOUTS };

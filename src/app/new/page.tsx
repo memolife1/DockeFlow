@@ -96,7 +96,7 @@ export default function NewPresentationPage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presentationId: pres.id, mode, ...form }),
+        body: JSON.stringify({ presentationId: pres.id, mode, useStockImages, ...form }),
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = (await res.json()) as { slides: Slide[] };

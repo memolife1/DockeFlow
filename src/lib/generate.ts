@@ -1,10 +1,15 @@
 import type {
   ChartSpec,
   ChartType,
+  FunnelStage,
   LayoutType,
+  ProcessStep,
   Slide,
   SlideColumn,
   Stat,
+  SwotContent,
+  TeamMember,
+  TimelineItem,
   Tone,
 } from "./types";
 import { uid } from "./utils";
@@ -31,6 +36,15 @@ export interface DraftSlide {
   chart?: ChartSpec | unknown;
   stats?: unknown; // Stat[] once normalized
   columns?: unknown; // SlideColumn[] once normalized
+  icons?: (string | null)[];
+  timeline?: unknown; // TimelineItem[] once normalized
+  steps?: unknown; // ProcessStep[] once normalized
+  funnel?: unknown; // FunnelStage[] once normalized
+  swot?: unknown; // SwotContent once normalized
+  team?: unknown; // TeamMember[] once normalized
+  imageQuery?: string;
+  imageUrl?: string;
+  sectionNumber?: number;
 }
 
 // ---- Text helpers ----------------------------------------------------------
@@ -312,10 +326,25 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
     title,
     content: [buildSubtitle(input)],
     speakerNotes: `Land the stakes in one breath: this is a decision, not an update. Look at ${aud} and name what's at risk if we wait.`,
-    layoutType: "title",
+    layoutType: "title_hero",
   });
 
-  // 2) Context (assertion)
+  // 2) Agenda
+  drafts.push({
+    title: "What we'll cover",
+    content: [
+      "Where things stand today",
+      "The signal behind the numbers",
+      "What it means if we do nothing",
+      "The choice in front of us",
+      "The recommendation",
+      "The plan for the next 90 days",
+    ],
+    speakerNotes: "Set the shape of the argument up front so the room knows where this is headed.",
+    layoutType: "agenda",
+  });
+
+  // 3) Context (assertion)
   drafts.push({
     title: synth
       ? `We enter the review ahead on volume, but behind on efficiency`
@@ -333,37 +362,11 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
           "Effort is spread across competing priorities with no clear owner",
           "The cost of another quarter of drift is now material",
         ],
+    icons: ["target", "growth", "money"],
     speakerNotes:
       "Don't just describe the situation — signal that the comfortable read is wrong. Set up the tension you'll resolve.",
-    layoutType: "content",
+    layoutType: "content_bullets",
   });
-
-  // 3) Insight (assertion) — carries the chart when there's data
-  const insight: DraftSlide = {
-    title: synth
-      ? `${synth.noun} climbed ${synth.growthPct}% to ${synth.last} — but the growth is concentrated`
-      : has
-      ? `The data points one way, and it isn't the obvious one`
-      : `Three signals suggest the window is closing faster than it looks`,
-    content: has
-      ? points.slice(3, 6)
-      : synth
-      ? [
-          `Q4 ${synth.noun.toLowerCase()} reached ${synth.last}, the strongest quarter of the year`,
-          "Top three accounts drove over half of net-new",
-          "Remove them and underlying growth is roughly flat",
-        ]
-      : [
-          "Momentum is real but it's borrowed from a shrinking pool",
-          "The leading indicators turned before the lagging ones did",
-          "Waiting one more quarter halves our options",
-        ],
-    speakerNotes:
-      "This is the slide that changes the room's mind. Walk the trend, then land the one number that reframes it. Pause before the recommendation.",
-    layoutType: "content",
-  };
-  if (chart) insight.chart = chart;
-  drafts.push(insight);
 
   // 3b) Proof in numbers (stat-block) — real stats from notes, else synthesized.
   const noteStats = extractStats(input.notes);
@@ -384,11 +387,44 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
       stats,
       speakerNotes:
         "Say each number out loud, then the one sentence it implies. Numbers land harder spoken than read.",
-      layoutType: "stat-block",
+      layoutType: "stat_kpi",
     });
   }
 
-  // 4) Implication (assertion)
+  // 4) Insight — carries the chart when there's data, otherwise a plain
+  // assertion slide (kept distinct from the context layout above).
+  const insight: DraftSlide = {
+    title: synth
+      ? `${synth.noun} climbed ${synth.growthPct}% to ${synth.last} — but the growth is concentrated`
+      : has
+      ? `The data points one way, and it isn't the obvious one`
+      : `Three signals suggest the window is closing faster than it looks`,
+    content: has
+      ? points.slice(3, 6)
+      : synth
+      ? [
+          `Q4 ${synth.noun.toLowerCase()} reached ${synth.last}, the strongest quarter of the year`,
+          "Top three accounts drove over half of net-new",
+          "Remove them and underlying growth is roughly flat",
+        ]
+      : [
+          "Momentum is real but it's borrowed from a shrinking pool",
+          "The leading indicators turned before the lagging ones did",
+          "Waiting one more quarter halves our options",
+        ],
+    icons: ["trend", "risk", "time"],
+    speakerNotes:
+      "This is the slide that changes the room's mind. Walk the trend, then land the one number that reframes it. Pause before the recommendation.",
+    // Distinct from the context slide above (content_bullets) whether or not
+    // a stat_kpi slide separates them, so two content_bullets never land back
+    // to back.
+    layoutType: chart ? "chart_focus" : "content_image_left",
+    imageQuery: chart ? undefined : `${title} business strategy`,
+  };
+  if (chart) insight.chart = chart;
+  drafts.push(insight);
+
+  // 5) Implication (assertion) — image-zone layout for visual variety.
   drafts.push({
     title: `Concentrated growth is a risk dressed up as a win`,
     content: [
@@ -396,12 +432,14 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
       "A single churned account erases a quarter of progress",
       "Doing nothing locks in the fragility",
     ],
+    icons: ["warning", "person", "lock"],
+    imageQuery: `${title} team discussion`,
     speakerNotes:
       "Make it personal to the audience's goals. The point is stakes, not analysis — why they can't let this ride.",
-    layoutType: "content",
+    layoutType: insight.layoutType === "content_image_left" ? "content_bullets" : "content_image_right",
   });
 
-  // 4b) The choice (two-column comparison) — stay vs. act.
+  // 6) The choice (two-column comparison) — stay vs. act.
   drafts.push({
     title: `The choice is between protecting the number and earning it`,
     content: [],
@@ -425,19 +463,35 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
     ],
     speakerNotes:
       "Frame it as a real fork, not a strawman. Give the safe option its due, then show why it's the riskier one.",
-    layoutType: "two-column",
+    layoutType: "two_column_compare",
   });
 
-  // 5) Recommendation (section)
+  // 7) Recommendation (section divider)
   drafts.push({
     title: `Double down where it's working — and fix the leak now`,
     content: [`The move: ${objective}, starting this quarter`],
     speakerNotes:
       "State the recommendation as one decisive sentence, then stop talking. Let it sit before you defend it.",
-    layoutType: "section",
+    layoutType: "section_divider",
+    sectionNumber: 2,
   });
 
-  // 6) Next steps (closing)
+  // 8) The plan (timeline) — the required "visual" layout for variety.
+  drafts.push({
+    title: `Ninety days, three checkpoints, one owner each`,
+    content: [],
+    timeline: [
+      { label: "Day 1–14", detail: "Name owner, launch the fix" },
+      { label: "Day 15–30", detail: "Instrument and review signal" },
+      { label: "Day 31–60", detail: "Broaden beyond top accounts" },
+      { label: "Day 61–90", detail: "Confirm the trend holds" },
+    ],
+    speakerNotes:
+      "Walk left to right. Each checkpoint needs a name attached before you leave the room.",
+    layoutType: "timeline_horizontal",
+  });
+
+  // 9) Next steps (closing)
   drafts.push({
     title: `Three moves in the next 30 days, each with an owner`,
     content: [
@@ -447,7 +501,7 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
     ],
     speakerNotes:
       "Close by assigning, not suggesting. Say the names and the dates out loud so the commitment is public.",
-    layoutType: "closing",
+    layoutType: "closing_cta",
   });
 
   return drafts;
@@ -459,7 +513,7 @@ export function draftsToSlides(
   presentationId: string,
   drafts: DraftSlide[],
 ): Slide[] {
-  return drafts.slice(0, 10).map((d, i) => ({
+  return drafts.slice(0, 14).map((d, i) => ({
     id: uid("slide"),
     presentationId,
     orderIndex: i,
@@ -470,7 +524,83 @@ export function draftsToSlides(
     chart: normalizeChart(d.chart),
     stats: normalizeStats(d.stats),
     columns: normalizeColumns(d.columns),
+    icons: Array.isArray(d.icons) ? d.icons : undefined,
+    timeline: normalizeTimeline(d.timeline),
+    steps: normalizeSteps(d.steps),
+    funnel: normalizeFunnel(d.funnel),
+    swot: normalizeSwot(d.swot),
+    team: normalizeTeam(d.team),
+    imageQuery: d.imageQuery,
+    imageUrl: d.imageUrl,
+    sectionNumber: d.sectionNumber,
   }));
+}
+
+function str(v: unknown): string {
+  return v != null ? String(v).trim() : "";
+}
+
+export function normalizeTimeline(v: unknown): TimelineItem[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((x) => {
+      const o = x as Partial<TimelineItem>;
+      return { label: str(o?.label), detail: o?.detail ? str(o.detail) : undefined };
+    })
+    .filter((x) => x.label)
+    .slice(0, 6);
+  return out.length >= 2 ? out : undefined;
+}
+
+export function normalizeSteps(v: unknown): ProcessStep[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((x) => {
+      const o = x as Partial<ProcessStep>;
+      return { label: str(o?.label), detail: o?.detail ? str(o.detail) : undefined };
+    })
+    .filter((x) => x.label)
+    .slice(0, 5);
+  return out.length >= 2 ? out : undefined;
+}
+
+export function normalizeFunnel(v: unknown): FunnelStage[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((x) => {
+      const o = x as Partial<FunnelStage>;
+      return { label: str(o?.label), value: o?.value ? str(o.value) : undefined };
+    })
+    .filter((x) => x.label)
+    .slice(0, 4);
+  return out.length >= 2 ? out : undefined;
+}
+
+export function normalizeSwot(v: unknown): SwotContent | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Partial<SwotContent>;
+  const arr = (x: unknown) =>
+    Array.isArray(x) ? x.map(String).filter(Boolean).slice(0, 3) : [];
+  const out: SwotContent = {
+    s: arr(o.s),
+    w: arr(o.w),
+    o: arr(o.o),
+    t: arr(o.t),
+  };
+  const hasAny = out.s.length || out.w.length || out.o.length || out.t.length;
+  return hasAny ? out : undefined;
+}
+
+export function normalizeTeam(v: unknown): TeamMember[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v
+    .map((x) => {
+      const o = x as Partial<TeamMember>;
+      return { name: str(o?.name), role: str(o?.role) };
+    })
+    .filter((x) => x.name)
+    .slice(0, 4);
+  return out.length ? out : undefined;
 }
 
 // Defensive normalization for stat-block data (raw from the model or engine).

@@ -10,10 +10,15 @@ import {
   SYSTEM_PROMPT,
   buildUserMessage,
   modelSlidesToDrafts,
+  hasRequiredLayouts,
   type ModelSlide,
 } from "@/lib/prompt";
 
 export const runtime = "nodejs";
+
+interface GenerateBody extends GenerateInput {
+  useStockImages?: boolean;
+}
 
 // Pull a JSON object out of the model's text response.
 function extractJson(text: string): { slides?: ModelSlide[] } | null {
@@ -45,7 +50,7 @@ async function generateWithClaude(
     const model = process.env.GENERATION_MODEL || "claude-sonnet-5";
     const message = await client.messages.create({
       model,
-      max_tokens: 3500,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserMessage(input) }],
     });
@@ -62,10 +67,76 @@ async function generateWithClaude(
   }
 }
 
+// Safety net: if the model (or fallback engine, in an unusual input) doesn't
+// include the required stat_kpi / visual layout, splice a synthesized one in
+// so every deck meets the "premium template" composition bar.
+function ensureRequiredLayouts(drafts: DraftSlide[]): DraftSlide[] {
+  const { hasStat, hasVisual } = hasRequiredLayouts(drafts);
+  const out = [...drafts];
+  const insertAt = Math.max(1, out.length - 2);
+
+  if (!hasStat) {
+    out.splice(insertAt, 0, {
+      title: "The numbers behind the recommendation",
+      content: [],
+      stats: [
+        { value: "3x", label: "Faster path with focused execution" },
+        { value: "90 d", label: "To the first measurable checkpoint" },
+      ],
+      speakerNotes: "Land these two numbers, then move to the ask.",
+      layoutType: "stat_kpi",
+    });
+  }
+  if (!hasVisual) {
+    out.splice(Math.max(1, out.length - 1), 0, {
+      title: "The plan, in three checkpoints",
+      content: [],
+      timeline: [
+        { label: "Day 1–30", detail: "Confirm scope and owner" },
+        { label: "Day 31–60", detail: "Execute the first workstream" },
+        { label: "Day 61–90", detail: "Review results, decide next step" },
+      ],
+      speakerNotes: "Walk the checkpoints left to right before the close.",
+      layoutType: "timeline_horizontal",
+    });
+  }
+  return out;
+}
+
+// Resolve imageQuery -> a real Pexels URL for image-zone layouts. Best-effort:
+// any failure just leaves the layout's built-in placeholder/fallback color.
+const IMAGE_LAYOUTS = new Set(["title_hero", "content_image_right", "content_image_left"]);
+
+async function resolveImages(drafts: DraftSlide[]): Promise<void> {
+  const key = process.env.PEXELS_API_KEY;
+  if (!key) return;
+  await Promise.all(
+    drafts.map(async (d) => {
+      if (!IMAGE_LAYOUTS.has(d.layoutType as string) || !d.imageQuery) return;
+      try {
+        const res = await fetch(
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(
+            d.imageQuery,
+          )}&per_page=1&orientation=landscape`,
+          { headers: { Authorization: key } },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          photos?: { src?: { landscape?: string; large2x?: string } }[];
+        };
+        const url = data.photos?.[0]?.src?.landscape ?? data.photos?.[0]?.src?.large2x;
+        if (url) d.imageUrl = url;
+      } catch {
+        /* leave the layout's fallback color in place */
+      }
+    }),
+  );
+}
+
 export async function POST(req: Request) {
-  let body: GenerateInput;
+  let body: GenerateBody;
   try {
-    body = (await req.json()) as GenerateInput;
+    body = (await req.json()) as GenerateBody;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -94,6 +165,9 @@ export async function POST(req: Request) {
     // Keep the loading state believable when running the local engine.
     await new Promise((r) => setTimeout(r, 800));
   }
+
+  drafts = ensureRequiredLayouts(drafts);
+  if (body.useStockImages) await resolveImages(drafts);
 
   const slides = draftsToSlides(input.presentationId, drafts);
   return NextResponse.json({ slides, source });
