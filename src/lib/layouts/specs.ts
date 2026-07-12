@@ -508,14 +508,17 @@ const processSteps: LayoutFn = (s, ctx) => {
     const x = M + i * (stepW + gap);
     const fill: ColorRole = i % 2 === 0 ? "primary" : "primaryShade";
     els.push({ kind: "shape", shape: "chevron", x, y: top, w: stepW, h: 1.35, fill, shadow: true });
+    // Text starts past the chevron's left notch (18% inset at mid-height).
+    const tx = x + stepW * 0.26;
+    const tw = stepW * 0.62;
     els.push(
-      txt(x + 0.28, top + 0.18, stepW - 0.55, 0.45, String(i + 1).padStart(2, "0"), 16, "textOnDark", {
+      txt(tx, top + 0.18, tw, 0.45, String(i + 1).padStart(2, "0"), 16, "textOnDark", {
         bold: true,
         font: "head",
       }),
     );
     els.push(
-      txt(x + 0.28, top + 0.62, stepW - 0.6, 0.6, st.label, 11.5, "textOnDark", {
+      txt(tx, top + 0.62, tw, 0.6, st.label, 11.5, "textOnDark", {
         bold: true,
         valign: "top",
         lineSpacing: 1.05,

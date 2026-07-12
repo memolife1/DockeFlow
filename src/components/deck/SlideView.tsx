@@ -157,8 +157,8 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
         style={{ ...base, display: "flex" }}
         dangerouslySetInnerHTML={{
           __html: svg.replace(
-            /<svg /,
-            '<svg style="width:100%;height:100%" ',
+            /<svg/,
+            '<svg style="width:100%;height:100%;display:block"',
           ),
         }}
       />
