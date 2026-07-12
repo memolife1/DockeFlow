@@ -66,12 +66,17 @@ function tidy(s: string): string {
 
 const SCALE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9, bn: 1e9 };
 
+// A metric's unit family — used to keep a single chart's values comparable.
+// Mixing e.g. a percentage with a dollar amount on one linear axis makes the
+// smaller values invisible next to the larger one.
+export type MetricUnit = "percent" | "currency" | "plain";
+
 // Find the most meaningful quantity in a clause. Numbers glued to a letter
 // (Q1, FY25, H2) are ignored; numbers with a unit ($, %, k/m/b) or a decimal
 // are preferred over bare integers.
-function parseValue(clause: string): number | null {
+function parseValue(clause: string): { value: number; unit: MetricUnit } | null {
   const re = /(^|[^A-Za-z0-9.])(\$?)(\d+(?:\.\d+)?)\s?(%|k|m|b|bn)?/gi;
-  let best: { value: number; score: number } | null = null;
+  let best: { value: number; score: number; unit: MetricUnit } | null = null;
   let m: RegExpExecArray | null;
   while ((m = re.exec(clause))) {
     const [, , dollar, num, unitRaw] = m;
@@ -80,9 +85,10 @@ function parseValue(clause: string): number | null {
     if (SCALE[unit]) v *= SCALE[unit];
     const meaningful = !!unit || !!dollar || num.includes(".");
     const score = meaningful ? 2 : 1;
-    if (!best || score > best.score) best = { value: v, score };
+    const kind: MetricUnit = unit === "%" ? "percent" : dollar ? "currency" : "plain";
+    if (!best || score > best.score) best = { value: v, score, unit: kind };
   }
-  return best ? best.value : null;
+  return best ? { value: best.value, unit: best.unit } : null;
 }
 
 // Short label for a metric clause (drop the number, units, and period token).
@@ -103,16 +109,17 @@ function metricLabel(clause: string): string {
 export interface Metric {
   label: string;
   value: number;
+  unit: MetricUnit;
 }
 
 export function extractMetrics(notes: string): Metric[] {
   const out: Metric[] = [];
   for (const c of clauses(notes)) {
     if (!/\d/.test(c)) continue;
-    const value = parseValue(c);
-    if (value === null) continue;
-    out.push({ label: metricLabel(c), value });
-    if (out.length >= 6) break;
+    const parsed = parseValue(c);
+    if (parsed === null) continue;
+    out.push({ label: metricLabel(c), value: parsed.value, unit: parsed.unit });
+    if (out.length >= 8) break;
   }
   return out;
 }
@@ -146,19 +153,55 @@ function normalizePeriod(p: string): string {
 function extractTimeSeries(
   notes: string,
 ): { labels: string[]; values: number[] } | null {
-  const points: { period: string; value: number }[] = [];
+  const points: { period: string; value: number; unit: MetricUnit }[] = [];
   for (const c of clauses(notes)) {
     const pm = c.match(PERIOD_RE);
     if (!pm) continue;
-    const value = parseValue(c);
-    if (value === null) continue;
-    points.push({ period: normalizePeriod(pm[1]), value });
+    const parsed = parseValue(c);
+    if (parsed === null) continue;
+    points.push({ period: normalizePeriod(pm[1]), value: parsed.value, unit: parsed.unit });
+  }
+  // Keep the series unit- and magnitude-consistent — the same guard as the
+  // bar-chart path (a stray "6-person team" mixed into a revenue trend would
+  // otherwise flatten the real series).
+  if (points.length >= 2) {
+    const byUnit = new Map<MetricUnit, typeof points>();
+    for (const p of points) byUnit.set(p.unit, [...(byUnit.get(p.unit) ?? []), p]);
+    const sameUnit = [...byUnit.values()].sort((a, b) => b.length - a.length)[0];
+    const clustered = tightestMagnitudeCluster(sameUnit);
+    if (clustered.length < points.length) points.splice(0, points.length, ...clustered);
   }
   if (points.length < 2) return null;
   return {
     labels: points.map((p) => p.period),
     values: points.map((p) => p.value),
   };
+}
+
+// Within a same-unit group, values can still span wildly different magnitudes
+// (e.g. "3x", "14 weeks", "280,000") — the largest one still swamps the rest
+// on a linear axis. Keep only the largest contiguous cluster (sorted by value)
+// where each neighboring step is within MAX_STEP_RATIO of the previous value.
+const MAX_STEP_RATIO = 8;
+function tightestMagnitudeCluster<T extends { value: number }>(items: T[]): T[] {
+  if (items.length < 2) return items;
+  const sorted = [...items].sort((a, b) => a.value - b.value);
+  let bestStart = 0;
+  let bestLen = 1;
+  let curStart = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = Math.max(Math.abs(sorted[i - 1].value), 1e-9);
+    const ratio = Math.abs(sorted[i].value) / prev;
+    if (ratio > MAX_STEP_RATIO) curStart = i;
+    const curLen = i - curStart + 1;
+    if (curLen > bestLen) {
+      bestLen = curLen;
+      bestStart = curStart;
+    }
+  }
+  const cluster = new Set(sorted.slice(bestStart, bestStart + bestLen));
+  // Preserve the caller's original ordering (matters for time series).
+  return items.filter((it) => cluster.has(it));
 }
 
 // Build a chart from the data found in the notes, if any.
@@ -174,7 +217,16 @@ export function buildChartFromNotes(notes: string): ChartSpec | undefined {
     };
   }
 
-  const metrics = extractMetrics(notes);
+  const allMetrics = extractMetrics(notes);
+  if (allMetrics.length < 2) return undefined;
+
+  // Chart values must share a unit — a percentage and a dollar figure on the
+  // same linear axis makes the smaller one invisible. Use the largest
+  // same-unit group found in the notes.
+  const byUnit = new Map<MetricUnit, Metric[]>();
+  for (const m of allMetrics) byUnit.set(m.unit, [...(byUnit.get(m.unit) ?? []), m]);
+  const sameUnit = [...byUnit.values()].sort((a, b) => b.length - a.length)[0];
+  const metrics = tightestMagnitudeCluster(sameUnit);
   if (metrics.length < 2) return undefined;
 
   const labels = metrics.map((m) => m.label);
