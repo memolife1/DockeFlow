@@ -22,6 +22,7 @@ import { BUILT_IN_TEMPLATES } from "./templates";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import {
   loadPresentationsRemote,
+  loadBrandThemesFromCloud,
   deletePresentationRemote,
   savePresentationRemote,
   type RemoteDeck,
@@ -206,12 +207,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           createdAt: su.created_at ?? nowIso(),
         };
         setUser(u);
-        const decks = await loadPresentationsRemote();
+        const [decks, brands] = await Promise.all([
+          loadPresentationsRemote(),
+          loadBrandThemesFromCloud(),
+        ]);
         if (!active) return;
         decks.forEach((x) =>
           syncedRef.current.set(x.presentation.id, deckSig(x.presentation, x.slides)),
         );
-        commit((d) => hydrateUserDecks(d, u.id, decks));
+        commit((d) => {
+          const withDecks = hydrateUserDecks(d, u.id, decks);
+          if (!brands.length) return withDecks;
+          const existingNames = new Set(
+            withDecks.uploadedTemplates.map((t) => t.theme.brand?.name),
+          );
+          const newTemplates = brands
+            .filter((b) => !existingNames.has(b.name))
+            .map((brand) => ({
+              id: uid("tpl"),
+              name: brand.name || "Custom brand",
+              category: "Uploaded",
+              description:
+                "Extracted from your uploaded PowerPoint — colors, fonts, and logo applied to every layout.",
+              sourceType: "uploaded" as const,
+              theme: {
+                accent: `#${brand.roles?.primary ?? "2563EB"}`,
+                surface: "#ffffff",
+                ink: "#1c1917",
+                fontFamily: "sans" as const,
+                character: "Your brand · extracted",
+                brand,
+              },
+              createdAt: nowIso(),
+            }));
+          return {
+            ...withDecks,
+            uploadedTemplates: [...withDecks.uploadedTemplates, ...newTemplates],
+          };
+        });
       } else {
         setUser(null);
       }

@@ -2,18 +2,24 @@
 
 import { useRef, useState } from "react";
 import { useStore } from "@/lib/store";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { Spinner } from "@/components/ui/Misc";
+import { Button } from "@/components/ui/Button";
 import { IconUpload, IconCheck } from "@/components/ui/icons";
-import type { Template } from "@/lib/types";
+import type { Template, TemplateTheme } from "@/lib/types";
+import { saveBrandThemeToCloud } from "@/lib/supabaseSync";
 
-// Deterministically derive an accent from a file name so uploads feel like
-// their style was "read" from the reference. (Mocked extraction.)
+// Deterministic fallback accent for non-.pptx style references (images/PDFs),
+// where there is no real theme XML to parse — this is a visual style
+// reference, not a brand-color extraction.
 const PALETTE = ["#c2410c", "#1e3a34", "#b91c1c", "#3730a3", "#0f766e", "#292524", "#7c2d12", "#155e63"];
 function accentFromName(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return PALETTE[h % PALETTE.length];
 }
+
+type Brand = NonNullable<TemplateTheme["brand"]>;
 
 export function UploadStyleReference({
   onUploaded,
@@ -22,16 +28,64 @@ export function UploadStyleReference({
 }) {
   const { addUploadedTemplate, addStyleRef } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<"idle" | "reading" | "done">("idle");
+  const [state, setState] = useState<"idle" | "reading" | "confirm" | "done" | "error">("idle");
   const [drag, setDrag] = useState(false);
   const [lastName, setLastName] = useState("");
+  const [error, setError] = useState("");
+  const [pendingBrand, setPendingBrand] = useState<Brand | null>(null);
 
-  const handleFile = (file: File) => {
+  const finalizeTemplate = (name: string, brand?: Brand) => {
+    const accent = brand?.roles?.primary
+      ? `#${brand.roles.primary}`
+      : accentFromName(name);
+    const tpl = addUploadedTemplate({
+      name: (brand?.name || name.replace(/\.[^.]+$/, "")).slice(0, 40) || "Custom template",
+      category: "Uploaded",
+      description: brand
+        ? "Extracted from your uploaded PowerPoint — colors, fonts, and logo applied to every layout."
+        : "Your uploaded reference. Generated decks follow this style.",
+      sourceType: "uploaded",
+      theme: {
+        accent,
+        surface: "#ffffff",
+        ink: "#1c1917",
+        fontFamily: "sans",
+        character: brand ? "Your brand · extracted" : "Custom · from your file",
+        brand,
+      },
+    });
+    setState("done");
+    onUploaded?.(tpl);
+    if (brand && isSupabaseConfigured) void saveBrandThemeToCloud(brand);
+  };
+
+  const handlePptx = async (file: File) => {
+    setState("reading");
+    setLastName(file.name);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/brand/extract", { method: "POST", body: form });
+      const data = (await res.json()) as { brand?: Brand; error?: string };
+      if (!res.ok || !data.brand) {
+        setError(data.error || "Couldn't read that file.");
+        setState("error");
+        return;
+      }
+      setPendingBrand(data.brand);
+      setState("confirm");
+    } catch {
+      setError("Upload failed. Please try again.");
+      setState("error");
+    }
+  };
+
+  const handleOther = (file: File) => {
     setState("reading");
     setLastName(file.name);
     const accent = accentFromName(file.name);
     const url = URL.createObjectURL(file);
-    // Simulate style extraction latency.
     setTimeout(() => {
       addStyleRef({
         fileName: file.name,
@@ -39,27 +93,24 @@ export function UploadStyleReference({
         fileUrl: url,
         extractedAccent: accent,
       });
-      const tpl = addUploadedTemplate({
-        name: file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "Custom template",
-        category: "Uploaded",
-        description: "Your uploaded reference. Generated decks follow this style.",
-        sourceType: "uploaded",
-        theme: {
-          accent,
-          surface: "#ffffff",
-          ink: "#1c1917",
-          fontFamily: "sans",
-          character: "Custom · from your file",
-        },
-      });
-      setState("done");
-      onUploaded?.(tpl);
-    }, 1200);
+      finalizeTemplate(file.name);
+    }, 1000);
+  };
+
+  const handleFile = (file: File) => {
+    if (/\.pptx$/i.test(file.name)) void handlePptx(file);
+    else handleOther(file);
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) handleFile(f);
+  };
+
+  const reset = () => {
+    setState("idle");
+    setPendingBrand(null);
+    setError("");
   };
 
   return (
@@ -94,9 +145,53 @@ export function UploadStyleReference({
             Reading style from {lastName}…
           </p>
           <p className="mt-1 text-[12px] text-ink-muted">
-            Extracting colors, structure, and tone
+            Extracting colors, fonts, and logo
           </p>
         </>
+      ) : state === "confirm" && pendingBrand ? (
+        <div className="w-full max-w-sm text-left">
+          <p className="text-sm font-medium text-ink">
+            Here&apos;s what we found in {lastName}
+          </p>
+          <p className="mt-1 text-[12px] text-ink-muted">
+            Confirm to apply this brand to every layout.
+          </p>
+          <div className="mt-4 flex items-center gap-2">
+            {(["primary", "dark", "accent", "surface"] as const).map((role) => (
+              <div key={role} className="flex flex-col items-center gap-1">
+                <span
+                  className="h-9 w-9 rounded-full border border-line-strong shadow-card"
+                  style={{ background: `#${pendingBrand.roles?.[role] || "CCCCCC"}` }}
+                />
+                <span className="text-[10px] capitalize text-ink-muted">{role}</span>
+              </div>
+            ))}
+            {pendingBrand.logoDataUri && (
+              <div className="ml-2 flex flex-col items-center gap-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={pendingBrand.logoDataUri}
+                  alt="Extracted logo"
+                  className="h-9 w-9 rounded border border-line-strong bg-white object-contain p-1 shadow-card"
+                />
+                <span className="text-[10px] text-ink-muted">Logo</span>
+              </div>
+            )}
+          </div>
+          {(pendingBrand.fontHead || pendingBrand.fontBody) && (
+            <p className="mt-3 text-[12px] text-ink-muted">
+              Font: {pendingBrand.fontHead || pendingBrand.fontBody}
+            </p>
+          )}
+          <div className="mt-4 flex gap-2">
+            <Button size="sm" onClick={() => finalizeTemplate(lastName, pendingBrand)}>
+              Use this brand
+            </Button>
+            <Button size="sm" variant="secondary" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       ) : state === "done" ? (
         <>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -110,12 +205,22 @@ export function UploadStyleReference({
           </p>
           <button
             onClick={() => {
-              setState("idle");
+              reset();
               inputRef.current?.click();
             }}
             className="mt-3 text-[13px] font-medium text-accent hover:text-accent-hover"
           >
             Upload another
+          </button>
+        </>
+      ) : state === "error" ? (
+        <>
+          <p className="text-sm font-medium text-red-600">{error}</p>
+          <button
+            onClick={reset}
+            className="mt-3 text-[13px] font-medium text-accent hover:text-accent-hover"
+          >
+            Try again
           </button>
         </>
       ) : (
@@ -127,8 +232,8 @@ export function UploadStyleReference({
             Upload a template or style reference
           </p>
           <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
-            Drop a PDF, PPTX, Keynote, or image. Your decks will follow its
-            look and structure.
+            Upload your company&apos;s .pptx for real brand colors, fonts, and
+            logo — or drop a PDF/image as a lighter style reference.
           </p>
           <button
             onClick={() => inputRef.current?.click()}

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Presentation, Slide } from "./types";
+import type { Presentation, Slide, TemplateTheme } from "./types";
 
 // Maps between the app's Presentation + Slide[] and a single `presentations`
 // row (slides stored as JSON). All functions are safe no-ops when Supabase is
@@ -96,5 +96,69 @@ export async function loadPresentationsRemote(): Promise<RemoteDeck[]> {
       updatedAt: r.updated_at,
     },
     slides: Array.isArray(r.slides) ? r.slides : [],
+  }));
+}
+
+// ---- Brand themes (extracted from an uploaded .pptx) ----------------------
+
+interface BrandThemeRow {
+  id: string;
+  name: string;
+  primary_color: string;
+  dark_color: string;
+  accent_color: string;
+  surface_color: string;
+  font_head: string | null;
+  font_body: string | null;
+  logo_data_uri: string | null;
+  created_at: string;
+}
+
+export async function saveBrandThemeToCloud(
+  brand: NonNullable<TemplateTheme["brand"]>,
+): Promise<void> {
+  if (!supabase) return;
+  const userId = await currentUserId();
+  if (!userId) return;
+  const { error } = await supabase.from("brand_themes").insert({
+    user_id: userId,
+    name: brand.name || "Custom brand",
+    primary_color: brand.roles?.primary ?? "2563EB",
+    dark_color: brand.roles?.dark ?? "1A1B21",
+    accent_color: brand.roles?.accent ?? brand.roles?.primary ?? "2563EB",
+    surface_color: brand.roles?.surface ?? "FFFFFF",
+    font_head: brand.fontHead ?? null,
+    font_body: brand.fontBody ?? null,
+    logo_data_uri: brand.logoDataUri ?? null,
+  });
+  if (error) console.error("Supabase brand save failed:", error.message);
+}
+
+export async function loadBrandThemesFromCloud(): Promise<
+  NonNullable<TemplateTheme["brand"]>[]
+> {
+  if (!supabase) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("brand_themes")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error || !data) {
+    if (error) console.error("Supabase brand load failed:", error.message);
+    return [];
+  }
+  return (data as BrandThemeRow[]).map((r) => ({
+    name: r.name,
+    roles: {
+      primary: r.primary_color,
+      dark: r.dark_color,
+      accent: r.accent_color,
+      surface: r.surface_color,
+    },
+    fontHead: r.font_head ?? undefined,
+    fontBody: r.font_body ?? undefined,
+    logoDataUri: r.logo_data_uri ?? undefined,
   }));
 }
