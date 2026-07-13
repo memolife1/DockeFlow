@@ -312,11 +312,12 @@ const sectionDivider: LayoutFn = (s, ctx) => {
 const contentBullets: LayoutFn = (s, ctx) => {
   const bullets = s.content.filter(Boolean);
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 32, "textBody", {
+    txt(M, 0.8, W - M * 2, 1.4, s.title, 32, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
       shrink: true,
+      maxLines: 3,
     }),
     ...bulletRows(bullets, s.icons, M, 2.35, W - M * 2, { rowH: 0.92, size: 14 }),
   ];
@@ -340,13 +341,14 @@ const contentImage = (side: "left" | "right"): LayoutFn => (s, ctx) => {
       query: s.imageQuery,
       fallback: "surfaceAlt",
     },
-    txt(textX, 1.0, textW, 1.5, s.title, 30, "textBody", {
+    txt(textX, 1.0, textW, 2.0, s.title, 26, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
       shrink: true,
+      maxLines: 3,
     }),
-    ...bulletRows(bullets, s.icons, textX, 2.75, textW, {
+    ...bulletRows(bullets, s.icons, textX, 3.2, textW, {
       rowH: 0.95,
       size: 13,
       max: 4,

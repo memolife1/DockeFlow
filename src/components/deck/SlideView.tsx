@@ -122,16 +122,12 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
         }}
       >
         <span
-          style={
-            el.maxLines
-              ? {
-                  display: "-webkit-box",
-                  WebkitLineClamp: el.maxLines,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }
-              : undefined
-          }
+          style={{
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitBoxOrient: "vertical",
+            WebkitLineClamp: el.maxLines ?? 99,
+          }}
         >
           {el.text}
         </span>
