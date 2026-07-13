@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { PresentationCard } from "@/components/deck/PresentationCard";
 import { EmptyState } from "@/components/ui/Misc";
@@ -14,6 +14,7 @@ import type { Presentation } from "@/lib/types";
 
 export default function DashboardPage() {
   const {
+    ready,
     user,
     presentations,
     slidesFor,
@@ -24,6 +25,21 @@ export default function DashboardPage() {
   } = useStore();
   const [pending, setPending] = useState<Presentation | null>(null);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    try {
+      if (!localStorage.getItem("df_tour_done")) {
+        // Delay slightly so the dashboard renders first.
+        const t = setTimeout(() => {
+          import("@/lib/tour").then(({ startTour }) => startTour());
+        }, 800);
+        return () => clearTimeout(t);
+      }
+    } catch {
+      /* ignore (e.g. localStorage unavailable) */
+    }
+  }, [ready, user]);
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -81,7 +97,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6" data-tour="dashboard-list">
           {presentations.length === 0 ? (
             <EmptyState
               icon={<IconDeck className="h-5 w-5" />}

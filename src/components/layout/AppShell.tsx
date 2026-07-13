@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/icons";
 
 const NAV = [
-  { href: "/dashboard", label: "Presentations", icon: IconGrid },
-  { href: "/templates", label: "Templates", icon: IconLayers },
-  { href: "/images", label: "Images", icon: IconImage },
-  { href: "/settings", label: "Settings", icon: IconSettings },
+  { href: "/dashboard", label: "Presentations", icon: IconGrid, tour: undefined },
+  { href: "/templates", label: "Templates", icon: IconLayers, tour: "sidebar-templates" },
+  { href: "/images", label: "Images", icon: IconImage, tour: "sidebar-images" },
+  { href: "/settings", label: "Settings", icon: IconSettings, tour: "sidebar-settings" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Logo href="/dashboard" />
         </div>
         <div className="px-3">
-          <ButtonLink href="/new" className="w-full" size="sm">
+          <ButtonLink href="/new" className="w-full" size="sm" data-tour="new-button">
             <IconPlus className="h-4 w-4" />
             New presentation
           </ButtonLink>
@@ -61,6 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.tour}
                 className={cn(
                   "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
@@ -96,6 +97,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="mt-1 w-full rounded-lg px-3 py-1.5 text-left text-[13px] text-ink-muted hover:bg-paper-sunk hover:text-ink"
           >
             Log out
+          </button>
+          <button
+            onClick={() => import("@/lib/tour").then(({ startTour }) => startTour())}
+            className="w-full px-3 py-1.5 text-left text-[12px] text-ink-faint hover:text-ink-muted"
+          >
+            Take a tour
           </button>
         </div>
       </aside>

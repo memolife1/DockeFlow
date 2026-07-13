@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+// Global stylesheet for the onboarding product tour (lib/tour.ts) — Next.js
+// only allows global CSS imports from the root layout, so it lives here even
+// though the tour library itself is lazy-loaded on demand.
+import "driver.js/dist/driver.css";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
