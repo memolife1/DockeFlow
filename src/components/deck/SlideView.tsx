@@ -24,6 +24,8 @@ const PT = 100 / (CANVAS_W * 72);
 const px = (inches: number, axis: "x" | "y") =>
   `${(inches / (axis === "x" ? CANVAS_W : CANVAS_H)) * 100}%`;
 
+const ARABIC_RE = /[؀-ۿ]/;
+
 export function SlideView({
   slide,
   theme,
@@ -101,6 +103,11 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
         : el.valign === "bottom"
         ? "flex-end"
         : "flex-start";
+    // Arabic-generated decks read right-to-left; mirror alignment unless the
+    // layout explicitly centered or right-aligned the text already.
+    const isArabic = ARABIC_RE.test(el.text);
+    const textAlign =
+      isArabic && (!el.align || el.align === "left") ? "right" : el.align ?? "left";
     return (
       <div
         style={{
@@ -108,7 +115,8 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
           display: "flex",
           flexDirection: "column",
           justifyContent: justify,
-          textAlign: el.align ?? "left",
+          textAlign,
+          direction: isArabic ? "rtl" : undefined,
           color: `#${spec.colors[el.color]}`,
           fontSize: `${el.size * PT}cqw`,
           fontWeight: el.bold ? 700 : 400,

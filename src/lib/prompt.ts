@@ -96,7 +96,7 @@ RULES — follow every one:
 
 6. SPEAKER NOTES = THE "SO WHAT". Every slide gets speakerNotes telling the presenter what to emphasize OUT LOUD that is not written on the slide — the interpretation, the risk, the number to land on, the transition to the next slide. Not a re-read of the bullets.
 
-7. Return 8-14 slides. Output strict JSON only.`;
+7. Return the number of slides specified in the user message (typically 8–14). Output strict JSON only.`;
 
 export function buildUserMessage(input: GenerateInput): string {
   const lines = [
@@ -106,6 +106,8 @@ export function buildUserMessage(input: GenerateInput): string {
     `Audience: ${input.audience || "(unspecified)"}`,
     `Objective: ${input.goal || "(unspecified)"}`,
     `Tone: ${input.tone}`,
+    `Output language: ${input.language || "English"} — Write ALL slide titles, bullets, stats labels, speaker notes, and every other text field in ${input.language || "English"}. Match the professional register of that language. Do not translate the JSON keys — only the values.`,
+    `Target slide count: ${input.targetSlideCount ?? 10} slides (you may add or remove 1 if the narrative demands it, but stay close).`,
     input.notes.trim() ? `\nSource notes / content:\n"""\n${input.notes.trim()}\n"""` : "\n(No notes provided — generate from the topic.)",
   ].filter(Boolean);
   return `Create the deck for:\n${lines.join("\n")}`;

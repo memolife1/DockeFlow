@@ -154,6 +154,7 @@ export async function POST(req: Request) {
     goal: body.goal,
     tone: body.tone,
     notes: body.notes ?? "",
+    language: body.language,
   };
 
   const claudeDrafts = await generateWithClaude(input);

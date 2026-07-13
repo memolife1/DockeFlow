@@ -28,6 +28,14 @@ const TONES: { value: Tone; label: string }[] = [
   { value: "visionary", label: "Visionary" },
 ];
 
+const LANGUAGES = [
+  { value: "English", label: "English" },
+  { value: "Arabic", label: "العربية" },
+  { value: "French", label: "Français" },
+  { value: "German", label: "Deutsch" },
+  { value: "Russian", label: "Русский" },
+];
+
 const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
 
 export default function NewPresentationPage() {
@@ -44,6 +52,7 @@ export default function NewPresentationPage() {
     goal: "",
     tone: "professional" as Tone,
     notes: "",
+    language: "English",
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [useStockImages, setUseStockImages] = useState(false);
@@ -261,6 +270,25 @@ export default function NewPresentationPage() {
                     </Select>
                   </Field>
                 </div>
+                <Field label="Language" hint="Controls the language of the generated content. The app interface stays in English.">
+                  <div className="flex flex-wrap gap-1.5">
+                    {LANGUAGES.map((l) => (
+                      <button
+                        key={l.value}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, language: l.value }))}
+                        className={cn(
+                          "rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors",
+                          form.language === l.value
+                            ? "border-accent bg-accent-soft text-accent"
+                            : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                        )}
+                      >
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
                 <Field label="Objective" htmlFor="goal">
                   <Input
                     id="goal"

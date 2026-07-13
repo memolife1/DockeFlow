@@ -23,6 +23,8 @@ export interface GenerateInput {
   goal: string;
   tone: Tone;
   notes: string;
+  language?: string; // e.g. "English", "Arabic", "French", "German", "Russian"
+  targetSlideCount?: number;
 }
 
 // Shape a single slide can take, before it's given ids/order. `chart` is left
