@@ -109,4 +109,8 @@ export interface ResolveCtx {
   index: number;
   total: number;
   deckTitle: string;
+  // The resolved theme, so layouts can render brand-specific elements (e.g. a
+  // real uploaded logo) without re-deriving it. Optional so existing callers
+  // that don't need it keep working.
+  spec?: ThemeSpec;
 }

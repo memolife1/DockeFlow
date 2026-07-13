@@ -70,6 +70,7 @@ export async function exportDeckToPptx(
       index: slide.orderIndex,
       total,
       deckTitle: presentation.title,
+      spec,
     });
     for (const el of resolved.elements) {
       if (el.kind === "icon") {
@@ -91,6 +92,7 @@ export async function exportDeckToPptx(
       index: slide.orderIndex,
       total,
       deckTitle: presentation.title,
+      spec,
     });
     const s = pptx.addSlide();
     s.background = { color: spec.colors[resolved.background] };

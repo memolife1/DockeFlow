@@ -173,18 +173,33 @@ function pageFooter(ctx: ResolveCtx, onDark = false): LayoutEl[] {
   ];
 }
 
-const brandMark = (color: ColorRole): LayoutEl =>
-  txt(M, 0.55, 4, 0.32, "DECKEFLOW", 11, color, {
+// Renders the uploaded brand's real logo image when the theme has one;
+// otherwise falls back to a text wordmark (the extracted brand name, or
+// "DECKEFLOW" for unbranded decks).
+function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl {
+  if (ctx?.spec?.logoDataUri) {
+    return {
+      kind: "image",
+      x: M,
+      y: 0.32,
+      w: 1.5,
+      h: 0.45,
+      url: ctx.spec.logoDataUri,
+      fallback: "surface",
+    };
+  }
+  return txt(M, 0.55, 4, 0.32, (ctx?.spec?.brandName ?? "DeckeFlow").toUpperCase(), 11, color, {
     bold: true,
     charSpacing: 3,
     valign: "middle",
   });
+}
 
 // ---- layouts ----------------------------------------------------------------
 
 type LayoutFn = (s: Slide, ctx: ResolveCtx) => ResolvedSlide;
 
-const titleHero: LayoutFn = (s) => {
+const titleHero: LayoutFn = (s, ctx) => {
   const els: LayoutEl[] = [];
   const hasImage = !!s.imageUrl;
   if (hasImage) {
@@ -196,7 +211,7 @@ const titleHero: LayoutFn = (s) => {
     els.push({ kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: "primary", transparency: 60 });
     els.push({ kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" });
   }
-  els.push(brandMark(hasImage ? "textOnDark" : "primaryTint"));
+  els.push(brandMark(hasImage ? "textOnDark" : "primaryTint", ctx));
   els.push(
     txt(M, 3.35, 8.6, 2.15, s.title, 40, "textOnDark", {
       bold: true,
@@ -218,11 +233,11 @@ const titleHero: LayoutFn = (s) => {
   return { background: "dark", elements: els };
 };
 
-const titleSplit: LayoutFn = (s) => {
+const titleSplit: LayoutFn = (s, ctx) => {
   const panelW = W * 0.38;
   const els: LayoutEl[] = [
     box(0, 0, panelW, H, "dark"),
-    brandMark("textOnDark"),
+    brandMark("textOnDark", ctx),
     txt(M, 2.9, panelW - M - 0.35, 2.5, s.title, 32, "textOnDark", {
       bold: true,
       font: "head",
@@ -719,10 +734,10 @@ const teamGrid: LayoutFn = (s, ctx) => {
   return { background: "surface", elements: [...els, ...pageFooter(ctx)] };
 };
 
-const closingCta: LayoutFn = (s) => {
+const closingCta: LayoutFn = (s, ctx) => {
   const steps = s.content.filter(Boolean).slice(0, 4);
   const els: LayoutEl[] = [
-    brandMark("primaryTint"),
+    brandMark("primaryTint", ctx),
     txt(M, 1.35, W - M * 2 - 1.5, 1.9, s.title, 34, "textOnDark", {
       bold: true,
       font: "head",

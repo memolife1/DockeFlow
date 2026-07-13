@@ -44,6 +44,7 @@ export function SlideView({
     index: index ?? slide.orderIndex ?? 0,
     total: total ?? 1,
     deckTitle: "",
+    spec,
   });
 
   return (
