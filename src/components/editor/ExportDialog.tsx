@@ -10,6 +10,7 @@ import { IconDoc, IconDeck, IconCheck } from "@/components/ui/icons";
 import type { ExportJob } from "@/lib/types";
 import { exportDeckToPptx } from "@/lib/pptx";
 import { getTemplate, BUILT_IN_TEMPLATES } from "@/lib/templates";
+import { IconCopy } from "@/components/ui/icons";
 
 const FORMATS: {
   value: ExportJob["format"];
@@ -38,19 +39,23 @@ export function ExportDialog({
   const [state, setState] = useState<"idle" | "processing" | "ready" | "error">(
     "idle",
   );
+  const [shareUrl, setShareUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const run = async () => {
     setState("processing");
+    setShareUrl("");
+    setCopied(false);
     createExportJob(presentationId, format);
     try {
-      if (format === "pptx") {
-        const pres = getPresentation(presentationId);
-        const slides = slidesFor(presentationId);
-        if (!pres || slides.length === 0) throw new Error("Nothing to export");
-        const uploaded = templates.filter((t) => t.sourceType === "uploaded");
-        const template =
-          getTemplate(pres.templateId, uploaded) ?? BUILT_IN_TEMPLATES[0];
+      const pres = getPresentation(presentationId);
+      const slides = slidesFor(presentationId);
+      if (!pres || slides.length === 0) throw new Error("Nothing to export");
+      const uploaded = templates.filter((t) => t.sourceType === "uploaded");
+      const template =
+        getTemplate(pres.templateId, uploaded) ?? BUILT_IN_TEMPLATES[0];
 
+      if (format === "pptx") {
         // Resolve slide images to data URIs via the server proxy so they can
         // be embedded. Silent fallback (solid theme fill) on any failure.
         const imageData: Record<string, string> = {};
@@ -69,13 +74,29 @@ export function ExportDialog({
 
         // Builds a real .pptx (with native charts) and downloads it.
         await exportDeckToPptx(pres, slides, template.theme, { imageData });
+      } else if (format === "pdf") {
+        const { exportDeckToPdf } = await import("@/lib/exportPdf");
+        await exportDeckToPdf(pres, slides, template.theme);
       } else {
-        // PDF / share-link remain placeholder flows in this MVP.
-        await fetch("/api/export", {
+        const res = await fetch("/api/share", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ presentationId, format }),
+          body: JSON.stringify({
+            presentationId,
+            slides,
+            theme: template.theme,
+            title: pres.title,
+          }),
         });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!data.url) throw new Error(data.error || "Couldn't create a share link");
+        setShareUrl(data.url);
+        try {
+          await navigator.clipboard.writeText(data.url);
+          setCopied(true);
+        } catch {
+          /* clipboard permission denied — URL is still shown for manual copy */
+        }
       }
       setState("ready");
     } catch {
@@ -85,7 +106,11 @@ export function ExportDialog({
 
   const close = () => {
     onClose();
-    setTimeout(() => setState("idle"), 200);
+    setTimeout(() => {
+      setState("idle");
+      setShareUrl("");
+      setCopied(false);
+    }, 200);
   };
 
   return (
@@ -121,13 +146,44 @@ export function ExportDialog({
           <p className="mt-3 text-sm font-medium text-ink">
             {format === "pptx"
               ? "Your presentation downloaded (.pptx)"
-              : `Export prepared (${format.toUpperCase()})`}
+              : format === "pdf"
+              ? "Your presentation downloaded (.pdf)"
+              : "Share link created"}
           </p>
           <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
             {format === "pptx"
               ? "An editable PowerPoint file with native charts on data slides. Check your downloads."
-              : "PDF and share links are placeholder flows in this MVP; PowerPoint export is fully functional."}
+              : format === "pdf"
+              ? "A print-ready PDF snapshot of every slide. Check your downloads."
+              : copied
+              ? "Copied to your clipboard — valid for 30 days."
+              : "Valid for 30 days. Copy the link below to share it."}
           </p>
+          {format === "link" && shareUrl && (
+            <div className="mt-4 flex w-full max-w-xs items-center gap-2 rounded-lg border border-line bg-paper-soft px-3 py-2">
+              <input
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                className="min-w-0 flex-1 truncate bg-transparent text-[12px] text-ink-muted outline-none"
+              />
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    setCopied(true);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-paper-sunk hover:text-ink"
+                aria-label="Copy link"
+                title="Copy link"
+              >
+                <IconCopy className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       ) : state === "error" ? (
         <div className="flex flex-col items-center py-4 text-center">
