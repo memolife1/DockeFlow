@@ -270,7 +270,9 @@ function GenericPreview({ template }: { template: Template }) {
           {template.name}
         </span>
         <h3 className="mt-[3%] text-[6.4cqw] font-bold leading-[1.02] tracking-[-0.02em]">
-          Your brand, applied.
+          {template.sourceType === "uploaded"
+            ? "Your brand, applied."
+            : template.theme.character || "A premium template."}
         </h3>
         <div className="mt-auto space-y-[3%]">
           <div className="h-[2cqw] w-[70%] rounded-full bg-[#eceef5]" />
