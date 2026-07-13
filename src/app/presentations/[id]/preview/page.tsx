@@ -107,6 +107,7 @@ export default function PreviewPage({
             <SlideView
               slide={current}
               theme={theme}
+              themeOverrides={presentation?.themeOverrides}
               index={i}
               total={slides.length}
             />

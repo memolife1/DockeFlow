@@ -149,6 +149,7 @@ export default function EditorPage({
           <SlideRail
             slides={slides}
             theme={theme}
+            themeOverrides={presentation.themeOverrides}
             selectedId={selected?.id ?? ""}
             onSelect={setSelectedId}
             onAdd={() => {
@@ -171,6 +172,7 @@ export default function EditorPage({
                 <SlideView
                   slide={selected}
                   theme={theme}
+                  themeOverrides={presentation.themeOverrides}
                   index={selected.orderIndex}
                   total={slides.length}
                 />
@@ -191,6 +193,8 @@ export default function EditorPage({
             <Inspector
               slide={selected}
               canDelete={slides.length > 1}
+              presentation={presentation}
+              theme={theme}
               onChange={(patch) => {
                 updateSlide(selected.id, patch);
                 flashSaved();
@@ -201,6 +205,10 @@ export default function EditorPage({
               }}
               onDelete={() => {
                 deleteSlide(selected.id);
+                flashSaved();
+              }}
+              onUpdatePresentation={(patch) => {
+                updatePresentation(id, patch);
                 flashSaved();
               }}
             />

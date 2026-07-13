@@ -48,6 +48,7 @@ export async function exportDeckToPdf(
         React.createElement(SlideView, {
           slide,
           theme,
+          themeOverrides: presentation.themeOverrides,
           index: i,
           total: ordered.length,
         }),

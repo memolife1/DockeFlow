@@ -127,6 +127,16 @@ export interface Presentation {
   // When true, the .pptx export puts a Pexels photo behind the title slide.
   // Session-scoped presentation option; not persisted to Supabase.
   useStockImages?: boolean;
+  // Per-presentation theme customization set from the editor's Design tab —
+  // layered on top of the chosen template's theme (lib/layouts/theme.ts).
+  themeOverrides?: {
+    accent?: string; // hex, no "#"
+    surface?: string; // hex, no "#"
+    ink?: string; // hex, no "#"
+    backgroundDesign?: string; // BackgroundDesignKey from lib/backgroundDesigns
+    fontFamily?: "sans" | "serif";
+    backgroundImageUri?: string; // full-bleed background photo, data URI
+  };
   createdAt: string;
   updatedAt: string;
 }

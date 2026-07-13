@@ -1,4 +1,4 @@
-import type { Slide, TemplateTheme } from "@/lib/types";
+import type { Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { buildThemeSpec } from "@/lib/layouts/theme";
 import { resolveSlide } from "@/lib/layouts/specs";
@@ -8,6 +8,7 @@ import {
   type LayoutEl,
   type ThemeSpec,
 } from "@/lib/layouts/types";
+import { BACKGROUND_DESIGNS } from "@/lib/backgroundDesigns";
 import { iconSvg } from "@/lib/icons";
 import { MiniChart } from "./MiniChart";
 
@@ -29,23 +30,26 @@ const ARABIC_RE = /[؀-ۿ]/;
 export function SlideView({
   slide,
   theme,
+  themeOverrides,
   index,
   total,
   className,
 }: {
   slide: Slide;
   theme: TemplateTheme;
+  themeOverrides?: Presentation["themeOverrides"];
   index?: number;
   total?: number;
   className?: string;
 }) {
-  const spec = buildThemeSpec(theme);
+  const spec = buildThemeSpec(theme, themeOverrides);
   const resolved = resolveSlide(slide, {
     index: index ?? slide.orderIndex ?? 0,
     total: total ?? 1,
     deckTitle: "",
     spec,
   });
+  const design = spec.backgroundDesign ? BACKGROUND_DESIGNS[spec.backgroundDesign] : undefined;
 
   return (
     <div
@@ -58,6 +62,35 @@ export function SlideView({
         fontFamily: spec.fontBodyCss,
       }}
     >
+      {spec.backgroundImageUri && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={spec.backgroundImageUri}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ pointerEvents: "none" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `#${spec.colors[resolved.background]}`,
+              opacity: 0.15,
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      )}
+      {design && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: design.css,
+            backgroundSize: design.size,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {resolved.elements.map((el, i) => (
         <El key={i} el={el} spec={spec} />
       ))}
@@ -238,10 +271,12 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
 export function SlideThumb({
   slide,
   theme,
+  themeOverrides,
   className,
 }: {
   slide: Slide;
   theme: TemplateTheme;
+  themeOverrides?: Presentation["themeOverrides"];
   className?: string;
 }) {
   return (
@@ -251,7 +286,7 @@ export function SlideThumb({
         className,
       )}
     >
-      <SlideView slide={slide} theme={theme} />
+      <SlideView slide={slide} theme={theme} themeOverrides={themeOverrides} />
     </div>
   );
 }

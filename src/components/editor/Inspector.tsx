@@ -1,12 +1,19 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
-import type { LayoutType, Slide } from "@/lib/types";
+import type { LayoutType, Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { IconPlus, IconTrash, IconCopy } from "@/components/ui/icons";
+import { IconPlus, IconTrash, IconCopy, IconUpload, IconX } from "@/components/ui/icons";
 import { resolveLayoutId } from "@/lib/layouts/specs";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import {
+  BACKGROUND_DESIGNS,
+  BACKGROUND_DESIGN_KEYS,
+  type BackgroundDesignKey,
+} from "@/lib/backgroundDesigns";
 
 const IMAGE_LAYOUTS = new Set(["content_image_right", "content_image_left"]);
 
@@ -29,20 +36,29 @@ const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "closing_cta", label: "Closing / next steps" },
 ];
 
+const stripHash = (hex: string) => hex.replace("#", "").toUpperCase();
+
 export function Inspector({
   slide,
   onChange,
   onDuplicate,
   onDelete,
   canDelete,
+  presentation,
+  theme,
+  onUpdatePresentation,
 }: {
   slide: Slide;
   onChange: (patch: Partial<Slide>) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   canDelete: boolean;
+  presentation: Presentation;
+  theme: TemplateTheme;
+  onUpdatePresentation: (patch: Partial<Presentation>) => void;
 }) {
   const { getUserImages } = useStore();
+  const [tab, setTab] = useState<"content" | "design">("content");
   const layoutId = resolveLayoutId(slide);
   const userImages = IMAGE_LAYOUTS.has(layoutId) ? getUserImages() : [];
 
@@ -55,140 +71,349 @@ export function Inspector({
   const removeLine = (i: number) =>
     onChange({ content: slide.content.filter((_, idx) => idx !== i) });
 
+  const overrides = presentation.themeOverrides;
+  const setOverride = (patch: Partial<NonNullable<Presentation["themeOverrides"]>>) =>
+    onUpdatePresentation({ themeOverrides: { ...overrides, ...patch } });
+
+  const accentHex = overrides?.accent ?? stripHash(theme.accent);
+  const surfaceHex = overrides?.surface ?? stripHash(theme.surface);
+  const inkHex = overrides?.ink ?? stripHash(theme.ink);
+  const fontFamily = overrides?.fontFamily ?? theme.fontFamily;
+  const backgroundDesign: BackgroundDesignKey =
+    (overrides?.backgroundDesign as BackgroundDesignKey) ?? "none";
+
   return (
     <div className="thin-scroll flex h-full flex-col overflow-y-auto border-l border-line bg-paper">
-      <div className="border-b border-line px-5 py-3">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">
           Slide {slide.orderIndex + 1}
         </span>
+        <div className="flex items-center gap-1 rounded-lg bg-paper-sunk p-0.5">
+          {(["content", "design"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-[12px] font-medium capitalize transition-colors",
+                tab === t ? "bg-white text-ink shadow-card" : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex-1 space-y-5 p-5">
-        <Field label="Layout" htmlFor="layout">
-          <Select
-            id="layout"
-            value={resolveLayoutId(slide)}
-            onChange={(e) => onChange({ layoutType: e.target.value as LayoutType })}
-          >
-            {LAYOUTS.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      {tab === "content" ? (
+        <>
+          <div className="flex-1 space-y-5 p-5">
+            <Field label="Layout" htmlFor="layout">
+              <Select
+                id="layout"
+                value={resolveLayoutId(slide)}
+                onChange={(e) => onChange({ layoutType: e.target.value as LayoutType })}
+              >
+                {LAYOUTS.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-        <Field label="Title" htmlFor="stitle">
-          <Textarea
-            id="stitle"
-            rows={2}
-            value={slide.title}
-            onChange={(e) => onChange({ title: e.target.value })}
-          />
-        </Field>
+            <Field label="Title" htmlFor="stitle">
+              <Textarea
+                id="stitle"
+                rows={2}
+                value={slide.title}
+                onChange={(e) => onChange({ title: e.target.value })}
+              />
+            </Field>
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[13px] font-medium text-ink-soft">
-              {slide.layoutType === "title" || slide.layoutType === "section"
-                ? "Subtitle"
-                : "Points"}
-            </span>
-            <button
-              onClick={addLine}
-              className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-hover"
-            >
-              <IconPlus className="h-3.5 w-3.5" /> Add
-            </button>
-          </div>
-          <div className="space-y-2">
-            {slide.content.map((line, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <Input
-                  value={line}
-                  onChange={(e) => setLine(i, e.target.value)}
-                  placeholder="Add a point…"
-                />
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[13px] font-medium text-ink-soft">
+                  {slide.layoutType === "title" || slide.layoutType === "section"
+                    ? "Subtitle"
+                    : "Points"}
+                </span>
                 <button
-                  onClick={() => removeLine(i)}
-                  className="mt-2.5 shrink-0 text-ink-faint hover:text-red-600"
-                  aria-label="Remove point"
+                  onClick={addLine}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-hover"
                 >
-                  <IconTrash className="h-4 w-4" />
+                  <IconPlus className="h-3.5 w-3.5" /> Add
                 </button>
               </div>
-            ))}
-            {slide.content.length === 0 && (
-              <p className="text-[13px] text-ink-faint">No points yet.</p>
-            )}
-          </div>
-        </div>
-
-        {IMAGE_LAYOUTS.has(layoutId) && (
-          <Field label="Slide photo">
-            <div className="space-y-2">
-              {slide.imageUrl && (
-                <div className="h-24 w-full overflow-hidden rounded-lg border border-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={slide.imageUrl}
-                    alt="Slide photo"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-              {userImages.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {userImages.slice(0, 6).map((img) => (
+              <div className="space-y-2">
+                {slide.content.map((line, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Input
+                      value={line}
+                      onChange={(e) => setLine(i, e.target.value)}
+                      placeholder="Add a point…"
+                    />
                     <button
-                      key={img.id}
-                      onClick={() => onChange({ imageUrl: img.dataUri || img.fileUrl })}
-                      className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
+                      onClick={() => removeLine(i)}
+                      className="mt-2.5 shrink-0 text-ink-faint hover:text-red-600"
+                      aria-label="Remove point"
                     >
+                      <IconTrash className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {slide.content.length === 0 && (
+                  <p className="text-[13px] text-ink-faint">No points yet.</p>
+                )}
+              </div>
+            </div>
+
+            {IMAGE_LAYOUTS.has(layoutId) && (
+              <Field label="Slide photo">
+                <div className="space-y-2">
+                  {slide.imageUrl && (
+                    <div className="h-24 w-full overflow-hidden rounded-lg border border-line">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={img.dataUri || img.fileUrl}
-                        alt={img.fileName}
+                        src={slide.imageUrl}
+                        alt="Slide photo"
                         className="h-full w-full object-cover"
                       />
-                    </button>
-                  ))}
+                    </div>
+                  )}
+                  {userImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {userImages.slice(0, 6).map((img) => (
+                        <button
+                          key={img.id}
+                          onClick={() => onChange({ imageUrl: img.dataUri || img.fileUrl })}
+                          className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img.dataUri || img.fileUrl}
+                            alt={img.fileName}
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Link
+                    href="/images"
+                    className="inline-block text-[13px] text-accent hover:text-accent-hover"
+                  >
+                    {userImages.length > 0 ? "View all photos →" : "Upload photos →"}
+                  </Link>
                 </div>
-              )}
-              <Link
-                href="/images"
-                className="inline-block text-[13px] text-accent hover:text-accent-hover"
-              >
-                {userImages.length > 0 ? "View all photos →" : "Upload photos →"}
-              </Link>
-            </div>
-          </Field>
-        )}
+              </Field>
+            )}
 
-        <Field label="Speaker notes" htmlFor="notes" hint="Not shown on slide">
-          <Textarea
-            id="notes"
-            rows={4}
-            value={slide.speakerNotes}
-            onChange={(e) => onChange({ speakerNotes: e.target.value })}
-            placeholder="What you'll say when presenting this slide…"
-          />
-        </Field>
+            <Field label="Speaker notes" htmlFor="notes" hint="Not shown on slide">
+              <Textarea
+                id="notes"
+                rows={4}
+                value={slide.speakerNotes}
+                onChange={(e) => onChange({ speakerNotes: e.target.value })}
+                placeholder="What you'll say when presenting this slide…"
+              />
+            </Field>
+          </div>
+
+          <div className="flex items-center gap-2 border-t border-line p-4">
+            <Button variant="secondary" size="sm" className="flex-1" onClick={onDuplicate}>
+              <IconCopy className="h-4 w-4" /> Duplicate
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              className="flex-1"
+              onClick={onDelete}
+              disabled={!canDelete}
+            >
+              <IconTrash className="h-4 w-4" /> Delete
+            </Button>
+          </div>
+        </>
+      ) : (
+        <DesignTab
+          accentHex={accentHex}
+          surfaceHex={surfaceHex}
+          inkHex={inkHex}
+          fontFamily={fontFamily}
+          backgroundDesign={backgroundDesign}
+          backgroundImageUri={overrides?.backgroundImageUri}
+          onSetColor={(key, hex) => setOverride({ [key]: stripHash(hex) })}
+          onSetFontFamily={(f) => setOverride({ fontFamily: f })}
+          onSetBackgroundDesign={(d) => setOverride({ backgroundDesign: d })}
+          onSetBackgroundImage={(dataUri) => setOverride({ backgroundImageUri: dataUri })}
+        />
+      )}
+    </div>
+  );
+}
+
+function ColorPicker({
+  label,
+  hex,
+  onChange,
+}: {
+  label: string;
+  hex: string;
+  onChange: (hex: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[13px] text-ink-soft">{label}</span>
+      <label className="relative h-8 w-8 cursor-pointer">
+        <div
+          className="h-8 w-8 rounded-full border-2 border-line-strong shadow-card"
+          style={{ backgroundColor: `#${hex}` }}
+        />
+        <input
+          type="color"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          value={`#${hex}`}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`${label} color`}
+        />
+      </label>
+    </div>
+  );
+}
+
+function DesignTab({
+  accentHex,
+  surfaceHex,
+  inkHex,
+  fontFamily,
+  backgroundDesign,
+  backgroundImageUri,
+  onSetColor,
+  onSetFontFamily,
+  onSetBackgroundDesign,
+  onSetBackgroundImage,
+}: {
+  accentHex: string;
+  surfaceHex: string;
+  inkHex: string;
+  fontFamily: "sans" | "serif";
+  backgroundDesign: BackgroundDesignKey;
+  backgroundImageUri?: string;
+  onSetColor: (key: "accent" | "surface" | "ink", hex: string) => void;
+  onSetFontFamily: (f: "sans" | "serif") => void;
+  onSetBackgroundDesign: (d: BackgroundDesignKey) => void;
+  onSetBackgroundImage: (dataUri: string | undefined) => void;
+}) {
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBgFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => onSetBackgroundImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="flex-1 space-y-6 overflow-y-auto p-5">
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Colors
+        </p>
+        <div className="space-y-3">
+          <ColorPicker label="Accent color" hex={accentHex} onChange={(h) => onSetColor("accent", h)} />
+          <ColorPicker label="Background" hex={surfaceHex} onChange={(h) => onSetColor("surface", h)} />
+          <ColorPicker label="Text color" hex={inkHex} onChange={(h) => onSetColor("ink", h)} />
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-line p-4">
-        <Button variant="secondary" size="sm" className="flex-1" onClick={onDuplicate}>
-          <IconCopy className="h-4 w-4" /> Duplicate
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          className="flex-1"
-          onClick={onDelete}
-          disabled={!canDelete}
-        >
-          <IconTrash className="h-4 w-4" /> Delete
-        </Button>
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Background design
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {BACKGROUND_DESIGN_KEYS.map((key) => {
+            const d = BACKGROUND_DESIGNS[key];
+            return (
+              <button
+                key={key}
+                onClick={() => onSetBackgroundDesign(key)}
+                className={cn(
+                  "flex flex-col items-center gap-1 rounded-lg border p-1.5 transition-colors",
+                  backgroundDesign === key
+                    ? "border-accent bg-accent-soft"
+                    : "border-line hover:border-line-strong",
+                )}
+              >
+                <div
+                  className="h-9 w-full rounded bg-paper-sunk"
+                  style={{ backgroundImage: d.css, backgroundSize: d.size }}
+                />
+                <span className="text-[11px] text-ink-muted">{d.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Typography
+        </p>
+        <div className="flex gap-2">
+          {(["sans", "serif"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => onSetFontFamily(f)}
+              className={cn(
+                "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
+                fontFamily === f
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+              )}
+            >
+              {f === "sans" ? "Sans-serif" : "Serif"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Background image
+        </p>
+        <input
+          ref={bgInputRef}
+          type="file"
+          accept=".jpg,.jpeg,.png"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleBgFile(f);
+            e.target.value = "";
+          }}
+        />
+        {backgroundImageUri ? (
+          <div className="relative overflow-hidden rounded-lg border border-line">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={backgroundImageUri} alt="" className="h-20 w-full object-cover" />
+            <button
+              onClick={() => onSetBackgroundImage(undefined)}
+              aria-label="Remove background image"
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-ink/70 text-white hover:bg-ink/90"
+            >
+              <IconX className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => bgInputRef.current?.click()}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-line-strong bg-paper-soft py-4 text-[13px] font-medium text-ink-muted hover:border-accent hover:text-accent"
+          >
+            <IconUpload className="h-4 w-4" /> Upload background image
+          </button>
+        )}
+        <p className="mt-1.5 text-[11px] text-ink-muted">
+          JPG or PNG, 1920×1080 recommended
+        </p>
       </div>
     </div>
   );

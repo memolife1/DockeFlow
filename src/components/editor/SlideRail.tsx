@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Slide, TemplateTheme } from "@/lib/types";
+import type { Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { SlideThumb } from "@/components/deck/SlideView";
 import { cn } from "@/lib/utils";
 import { IconPlus, IconDrag } from "@/components/ui/icons";
@@ -9,6 +9,7 @@ import { IconPlus, IconDrag } from "@/components/ui/icons";
 export function SlideRail({
   slides,
   theme,
+  themeOverrides,
   selectedId,
   onSelect,
   onAdd,
@@ -16,6 +17,7 @@ export function SlideRail({
 }: {
   slides: Slide[];
   theme: TemplateTheme;
+  themeOverrides?: Presentation["themeOverrides"];
   selectedId: string;
   onSelect: (id: string) => void;
   onAdd: () => void;
@@ -80,7 +82,7 @@ export function SlideRail({
               onClick={() => onSelect(slide.id)}
               className="min-w-0 flex-1 text-left"
             >
-              <SlideThumb slide={slide} theme={theme} />
+              <SlideThumb slide={slide} theme={theme} themeOverrides={themeOverrides} />
             </button>
           </div>
         ))}

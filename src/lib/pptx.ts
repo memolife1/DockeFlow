@@ -54,7 +54,7 @@ export async function exportDeckToPptx(
   theme: TemplateTheme,
   options: ExportOptions = {},
 ): Promise<void> {
-  const spec = buildThemeSpec(theme);
+  const spec = buildThemeSpec(theme, presentation.themeOverrides);
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5 — set before adding slides
   pptx.author = "DeckeFlow";
@@ -96,6 +96,20 @@ export async function exportDeckToPptx(
     });
     const s = pptx.addSlide();
     s.background = { color: spec.colors[resolved.background] };
+    if (spec.backgroundImageUri) {
+      // Full-bleed background photo (Design tab, Phase 4) with a subtle
+      // theme-color overlay so slide content stays readable over any photo —
+      // matches the 0.15-opacity overlay used in the HTML preview.
+      s.background = { data: spec.backgroundImageUri };
+      s.addShape(pptx.ShapeType.rect, {
+        x: 0,
+        y: 0,
+        w: CANVAS_W,
+        h: CANVAS_H,
+        fill: { color: spec.colors[resolved.background], transparency: 85 },
+        line: { type: "none" },
+      });
+    }
     for (const el of resolved.elements) {
       renderEl(pptx, s, el, spec, options, iconCache);
     }

@@ -1,4 +1,5 @@
 import type { ChartSpec } from "../types";
+import type { BackgroundDesignKey } from "../backgroundDesigns";
 
 // ---------------------------------------------------------------------------
 // Single-source-of-truth layout system.
@@ -41,6 +42,9 @@ export interface ThemeSpec {
   chartPalette: string[]; // hex list (no #)
   logoDataUri?: string; // brand logo (Phase 4)
   brandName?: string;
+  // Per-presentation design overrides (editor Design tab).
+  backgroundDesign?: BackgroundDesignKey;
+  backgroundImageUri?: string;
 }
 
 interface BaseEl {

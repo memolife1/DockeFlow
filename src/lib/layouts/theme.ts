@@ -1,5 +1,8 @@
-import type { TemplateTheme } from "../types";
+import type { Presentation, TemplateTheme } from "../types";
+import { isBackgroundDesignKey } from "../backgroundDesigns";
 import type { ColorRole, ThemeSpec } from "./types";
+
+type ThemeOverrides = Presentation["themeOverrides"];
 
 // ---------------------------------------------------------------------------
 // Theme derivation: TemplateTheme (accent + ink + font family, plus optional
@@ -57,9 +60,9 @@ export function contrast(a: string, b: string): number {
 const WHITE = "FFFFFF";
 const NEAR_BLACK = "10151E";
 
-export function buildThemeSpec(t: TemplateTheme): ThemeSpec {
+export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): ThemeSpec {
   const brand = t.brand;
-  const primary = normHex(brand?.roles?.primary ?? t.accent, "2563EB");
+  const primary = normHex(overrides?.accent ?? brand?.roles?.primary ?? t.accent, "2563EB");
 
   // Dark: near-black with a slight cast of the primary. If the brand supplies
   // one, verify it is actually dark enough to hold white text.
@@ -68,8 +71,9 @@ export function buildThemeSpec(t: TemplateTheme): ThemeSpec {
   if (contrast(WHITE, dark) < 4.5) dark = NEAR_BLACK;
 
   // Accent defaults to a deeper cut of the primary (keeps palettes cohesive);
-  // brands may supply a genuine second color.
-  let accent = normHex(brand?.roles?.accent, mix(primary, NEAR_BLACK, 0.3));
+  // brands may supply a genuine second color, and the Design tab's single
+  // accent control sets both primary and accent to the same hex.
+  let accent = normHex(overrides?.accent ?? brand?.roles?.accent, mix(primary, NEAR_BLACK, 0.3));
   // Accent is used for large text on light surfaces — keep it readable.
   if (contrast(accent, WHITE) < 3) accent = mix(accent, NEAR_BLACK, 0.4);
 
@@ -78,7 +82,8 @@ export function buildThemeSpec(t: TemplateTheme): ThemeSpec {
   if (contrast(effPrimary, WHITE) < 2.2)
     effPrimary = mix(effPrimary, NEAR_BLACK, 0.35);
 
-  const surface = normHex(brand?.roles?.surface, WHITE);
+  const surface = normHex(overrides?.surface ?? brand?.roles?.surface, WHITE);
+  const textBody = normHex(overrides?.ink, "2B3038");
   const colors: Record<ColorRole, string> = {
     primary: effPrimary,
     primaryTint: mix(effPrimary, WHITE, 0.9),
@@ -91,14 +96,21 @@ export function buildThemeSpec(t: TemplateTheme): ThemeSpec {
     accentTint: mix(accent, WHITE, 0.9),
     textOnDark: WHITE,
     textOnDarkMuted: mix(dark, WHITE, 0.62),
-    textBody: "2B3038",
+    textBody,
     textMuted: "666D7A",
     white: WHITE,
   };
 
-  const serif = t.fontFamily === "serif";
-  const fontHead = brand?.fontHead || (serif ? "Georgia" : "Plus Jakarta Sans");
-  const fontBody = brand?.fontBody || "Plus Jakarta Sans";
+  // A Design-tab font choice is a deliberate full override — it wins over
+  // whatever the brand extracted, unlike the color roles above which layer.
+  const effectiveFontFamily = overrides?.fontFamily ?? t.fontFamily;
+  const serif = effectiveFontFamily === "serif";
+  const fontHead = overrides?.fontFamily
+    ? serif
+      ? "Georgia"
+      : "Plus Jakarta Sans"
+    : brand?.fontHead || (serif ? "Georgia" : "Plus Jakarta Sans");
+  const fontBody = overrides?.fontFamily ? "Plus Jakarta Sans" : brand?.fontBody || "Plus Jakarta Sans";
 
   return {
     colors,
@@ -118,5 +130,10 @@ export function buildThemeSpec(t: TemplateTheme): ThemeSpec {
     ],
     logoDataUri: brand?.logoDataUri,
     brandName: brand?.name,
+    backgroundDesign:
+      overrides?.backgroundDesign && isBackgroundDesignKey(overrides.backgroundDesign) && overrides.backgroundDesign !== "none"
+        ? overrides.backgroundDesign
+        : undefined,
+    backgroundImageUri: overrides?.backgroundImageUri,
   };
 }
