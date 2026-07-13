@@ -36,6 +36,13 @@ const LANGUAGES = [
   { value: "Russian", label: "Русский" },
 ];
 
+const SLIDE_COUNTS: { value: number; label: string }[] = [
+  { value: 8, label: "Concise" },
+  { value: 10, label: "Standard" },
+  { value: 12, label: "Detailed" },
+  { value: 14, label: "Comprehensive" },
+];
+
 const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
 
 export default function NewPresentationPage() {
@@ -53,6 +60,7 @@ export default function NewPresentationPage() {
     tone: "professional" as Tone,
     notes: "",
     language: "English",
+    targetSlideCount: 10,
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [useStockImages, setUseStockImages] = useState(false);
@@ -397,6 +405,37 @@ export default function NewPresentationPage() {
                     )}
                   />
                 </button>
+              </div>
+
+              {/* Slide count (drives the deck's target length). */}
+              <div className="mt-8">
+                <p className="mb-3 text-[13px] font-semibold text-ink-soft">
+                  Deck length
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {SLIDE_COUNTS.map((sc) => (
+                    <button
+                      key={sc.value}
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({ ...f, targetSlideCount: sc.value }))
+                      }
+                      className={cn(
+                        "rounded-xl border px-3 py-3 text-center transition-all",
+                        form.targetSlideCount === sc.value
+                          ? "border-accent bg-accent-soft ring-2 ring-accent-ring"
+                          : "border-line hover:border-line-strong hover:shadow-card",
+                      )}
+                    >
+                      <p className="text-lg font-semibold text-ink">
+                        {sc.value} slides
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-ink-muted">
+                        {sc.label}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {error && (
