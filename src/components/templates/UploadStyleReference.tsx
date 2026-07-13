@@ -37,18 +37,22 @@ export function UploadStyleReference({
 }) {
   const { addUploadedTemplate, addStyleRef } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState<"file" | "url">("file");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [state, setState] = useState<"idle" | "reading" | "confirm" | "done" | "error">("idle");
   const [drag, setDrag] = useState(false);
   const [lastName, setLastName] = useState("");
+  const [source, setSource] = useState<"file" | "url">("file");
   const [error, setError] = useState("");
   const [pendingBrand, setPendingBrand] = useState<Brand | null>(null);
   // The as-extracted brand, kept untouched so "Reset to extracted" always has
   // something to restore to even after the user tweaks colors/font.
   const extractedBrandRef = useRef<Brand | null>(null);
 
-  const beginConfirm = (name: string, brand: Brand) => {
+  const beginConfirm = (name: string, brand: Brand, kind: "file" | "url" = "file") => {
     extractedBrandRef.current = brand;
     setLastName(name);
+    setSource(kind);
     setPendingBrand(brand);
     setState("confirm");
   };
@@ -69,7 +73,9 @@ export function UploadStyleReference({
       name: (brand?.name || name.replace(/\.[^.]+$/, "")).slice(0, 40) || "Custom template",
       category: "Uploaded",
       description: brand
-        ? "Extracted from your uploaded PowerPoint — colors, fonts, and logo applied to every layout."
+        ? source === "url"
+          ? "Extracted from your website — colors, fonts, and logo applied to every layout."
+          : "Extracted from your uploaded PowerPoint — colors, fonts, and logo applied to every layout."
         : "Your uploaded reference. Generated decks follow this style.",
       sourceType: "uploaded",
       theme: {
@@ -107,6 +113,32 @@ export function UploadStyleReference({
     }
   };
 
+  const handleWebsiteUrl = async () => {
+    const raw = websiteUrl.trim();
+    if (!raw) return;
+    setState("reading");
+    setLastName(raw);
+    setError("");
+    try {
+      const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      const res = await fetch("/api/brand/extract-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { brand?: Brand; domain?: string; error?: string };
+      if (!res.ok || !data.brand) {
+        setError(data.error || "Couldn't read that website.");
+        setState("error");
+        return;
+      }
+      beginConfirm(data.domain || raw, data.brand, "url");
+    } catch {
+      setError("Couldn't reach that website. Please try again.");
+      setState("error");
+    }
+  };
+
   const handleOther = (file: File) => {
     setState("reading");
     setLastName(file.name);
@@ -138,6 +170,7 @@ export function UploadStyleReference({
     setPendingBrand(null);
     extractedBrandRef.current = null;
     setError("");
+    setWebsiteUrl("");
   };
 
   return (
@@ -178,7 +211,9 @@ export function UploadStyleReference({
       ) : state === "confirm" && pendingBrand ? (
         <div className="w-full max-w-sm text-left">
           <p className="text-sm font-medium text-ink">
-            Here&apos;s what we found in {lastName}
+            {source === "url"
+              ? `Here's what we found on ${lastName}`
+              : `Here's what we found in ${lastName}`}
           </p>
           <p className="mt-1 text-[12px] text-ink-muted">
             Confirm to apply this brand to every layout — or tweak any color first.
@@ -293,22 +328,78 @@ export function UploadStyleReference({
         </>
       ) : (
         <>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-paper text-ink-muted shadow-card">
-            <IconUpload className="h-5 w-5" />
+          <div className="mb-5 flex items-center gap-1 rounded-lg bg-paper p-1 shadow-card">
+            <button
+              type="button"
+              onClick={() => setTab("file")}
+              className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                tab === "file" ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              📎 Upload file
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("url")}
+              className={`rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                tab === "url" ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              🔗 Paste website URL
+            </button>
           </div>
-          <p className="mt-3 text-sm font-medium text-ink">
-            Upload a template or style reference
-          </p>
-          <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
-            Upload your company&apos;s .pptx for real brand colors, fonts, and
-            logo — or drop a PDF/image as a lighter style reference.
-          </p>
-          <button
-            onClick={() => inputRef.current?.click()}
-            className="mt-4 inline-flex h-9 items-center rounded-lg border border-line-strong bg-paper px-4 text-sm font-medium text-ink hover:bg-paper-sunk"
-          >
-            Choose file
-          </button>
+
+          {tab === "url" ? (
+            <div className="w-full max-w-xs">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-paper text-ink-muted shadow-card">
+                <IconUpload className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-ink">
+                Extract your brand from a website
+              </p>
+              <p className="mt-1 text-[13px] text-ink-muted">
+                Paste a client&apos;s (or your own) site and we&apos;ll pull its
+                colors, font, and logo.
+              </p>
+              <input
+                type="url"
+                placeholder="https://yourcompany.com"
+                className="mt-4 w-full rounded-lg border border-line px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-ring"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleWebsiteUrl();
+                }}
+              />
+              <Button
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => void handleWebsiteUrl()}
+                disabled={!websiteUrl.trim()}
+              >
+                Extract brand
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-paper text-ink-muted shadow-card">
+                <IconUpload className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-sm font-medium text-ink">
+                Upload a template or style reference
+              </p>
+              <p className="mt-1 max-w-xs text-[13px] text-ink-muted">
+                Upload your company&apos;s .pptx for real brand colors, fonts, and
+                logo — or drop a PDF/image as a lighter style reference.
+              </p>
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="mt-4 inline-flex h-9 items-center rounded-lg border border-line-strong bg-paper px-4 text-sm font-medium text-ink hover:bg-paper-sunk"
+              >
+                Choose file
+              </button>
+            </>
+          )}
         </>
       )}
     </div>
