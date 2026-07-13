@@ -185,6 +185,9 @@ export interface TemplateTheme {
     fontHead?: string;
     fontBody?: string;
     logoDataUri?: string;
+    // User-chosen override in the confirmation dialog (Phase 1) — takes
+    // precedence over whatever the source (.pptx / website) implied.
+    fontFamily?: "sans" | "serif";
   };
 }
 

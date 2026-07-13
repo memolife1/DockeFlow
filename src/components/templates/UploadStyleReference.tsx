@@ -5,9 +5,18 @@ import { useStore } from "@/lib/store";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Spinner } from "@/components/ui/Misc";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Field";
 import { IconUpload, IconCheck } from "@/components/ui/icons";
 import type { Template, TemplateTheme } from "@/lib/types";
 import { saveBrandThemeToCloud } from "@/lib/supabaseSync";
+
+const BRAND_ROLES = ["primary", "dark", "accent", "surface"] as const;
+const ROLE_LABELS: Record<(typeof BRAND_ROLES)[number], string> = {
+  primary: "Primary",
+  dark: "Dark",
+  accent: "Accent",
+  surface: "Surface",
+};
 
 // Deterministic fallback accent for non-.pptx style references (images/PDFs),
 // where there is no real theme XML to parse — this is a visual style
@@ -33,6 +42,24 @@ export function UploadStyleReference({
   const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
   const [pendingBrand, setPendingBrand] = useState<Brand | null>(null);
+  // The as-extracted brand, kept untouched so "Reset to extracted" always has
+  // something to restore to even after the user tweaks colors/font.
+  const extractedBrandRef = useRef<Brand | null>(null);
+
+  const beginConfirm = (name: string, brand: Brand) => {
+    extractedBrandRef.current = brand;
+    setLastName(name);
+    setPendingBrand(brand);
+    setState("confirm");
+  };
+
+  const setRole = (role: (typeof BRAND_ROLES)[number], hex: string) => {
+    setPendingBrand((prev) =>
+      prev
+        ? { ...prev, roles: { ...prev.roles, [role]: hex.replace("#", "").toUpperCase() } }
+        : prev,
+    );
+  };
 
   const finalizeTemplate = (name: string, brand?: Brand) => {
     const accent = brand?.roles?.primary
@@ -47,9 +74,9 @@ export function UploadStyleReference({
       sourceType: "uploaded",
       theme: {
         accent,
-        surface: "#ffffff",
+        surface: brand?.roles?.surface ? `#${brand.roles.surface}` : "#ffffff",
         ink: "#1c1917",
-        fontFamily: "sans",
+        fontFamily: brand?.fontFamily ?? "sans",
         character: brand ? "Your brand · extracted" : "Custom · from your file",
         brand,
       },
@@ -73,8 +100,7 @@ export function UploadStyleReference({
         setState("error");
         return;
       }
-      setPendingBrand(data.brand);
-      setState("confirm");
+      beginConfirm(file.name, data.brand);
     } catch {
       setError("Upload failed. Please try again.");
       setState("error");
@@ -110,6 +136,7 @@ export function UploadStyleReference({
   const reset = () => {
     setState("idle");
     setPendingBrand(null);
+    extractedBrandRef.current = null;
     setError("");
   };
 
@@ -154,33 +181,74 @@ export function UploadStyleReference({
             Here&apos;s what we found in {lastName}
           </p>
           <p className="mt-1 text-[12px] text-ink-muted">
-            Confirm to apply this brand to every layout.
+            Confirm to apply this brand to every layout — or tweak any color first.
           </p>
-          <div className="mt-4 flex items-center gap-2">
-            {(["primary", "dark", "accent", "surface"] as const).map((role) => (
-              <div key={role} className="flex flex-col items-center gap-1">
-                <span
-                  className="h-9 w-9 rounded-full border border-line-strong shadow-card"
-                  style={{ background: `#${pendingBrand.roles?.[role] || "CCCCCC"}` }}
-                />
-                <span className="text-[10px] capitalize text-ink-muted">{role}</span>
-              </div>
-            ))}
+          <div className="mt-4 flex items-center gap-3">
+            {BRAND_ROLES.map((role) => {
+              const hex = pendingBrand.roles?.[role] || "CCCCCC";
+              return (
+                <div key={role} className="flex flex-col items-center gap-1">
+                  <label className="relative h-10 w-10 cursor-pointer">
+                    <div
+                      className="h-10 w-10 rounded-full border-2 border-line-strong shadow-card"
+                      style={{ backgroundColor: `#${hex}` }}
+                    />
+                    <input
+                      type="color"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      value={`#${hex}`}
+                      onChange={(e) => setRole(role, e.target.value)}
+                      aria-label={`${ROLE_LABELS[role]} color`}
+                    />
+                  </label>
+                  <span className="text-[10px] text-ink-muted">{ROLE_LABELS[role]}</span>
+                </div>
+              );
+            })}
             {pendingBrand.logoDataUri && (
-              <div className="ml-2 flex flex-col items-center gap-1">
+              <div className="ml-1 flex flex-col items-center gap-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={pendingBrand.logoDataUri}
                   alt="Extracted logo"
-                  className="h-9 w-9 rounded border border-line-strong bg-white object-contain p-1 shadow-card"
+                  className="h-10 w-10 rounded border border-line-strong bg-white object-contain p-1 shadow-card"
                 />
                 <span className="text-[10px] text-ink-muted">Logo</span>
               </div>
             )}
           </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-[12px] text-ink-muted">
+              Font
+              <Select
+                className="h-8 w-32 text-[13px]"
+                value={pendingBrand.fontFamily ?? "sans"}
+                onChange={(e) =>
+                  setPendingBrand((prev) =>
+                    prev
+                      ? { ...prev, fontFamily: e.target.value as "sans" | "serif" }
+                      : prev,
+                  )
+                }
+              >
+                <option value="sans">Sans-serif</option>
+                <option value="serif">Serif</option>
+              </Select>
+            </label>
+            {extractedBrandRef.current && (
+              <button
+                onClick={() => setPendingBrand(extractedBrandRef.current)}
+                className="text-[12px] font-medium text-accent hover:text-accent-hover"
+              >
+                Reset to extracted
+              </button>
+            )}
+          </div>
+
           {(pendingBrand.fontHead || pendingBrand.fontBody) && (
-            <p className="mt-3 text-[12px] text-ink-muted">
-              Font: {pendingBrand.fontHead || pendingBrand.fontBody}
+            <p className="mt-2 text-[12px] text-ink-muted">
+              Extracted font: {pendingBrand.fontHead || pendingBrand.fontBody}
             </p>
           )}
           <div className="mt-4 flex gap-2">
