@@ -113,6 +113,8 @@ async function resolveImages(drafts: DraftSlide[]): Promise<void> {
   await Promise.all(
     drafts.map(async (d) => {
       if (!IMAGE_LAYOUTS.has(d.layoutType as string) || !d.imageQuery) return;
+      // Already satisfied by the user's own photo library — never fetch stock.
+      if (d.imageQuery === "USER_PHOTO" || d.imageUrl) return;
       try {
         const res = await fetch(
           `https://api.pexels.com/v1/search?query=${encodeURIComponent(
@@ -131,6 +133,20 @@ async function resolveImages(drafts: DraftSlide[]): Promise<void> {
       }
     }),
   );
+}
+
+// Assign the user's own uploaded photos (data URIs) to any slide the model
+// flagged with imageQuery: "USER_PHOTO", rotating through the library so
+// multiple image slides don't all show the same photo.
+function resolveUserImages(drafts: DraftSlide[], userImageUris?: string[]): void {
+  if (!userImageUris?.length) return;
+  let i = 0;
+  for (const d of drafts) {
+    if (d.imageQuery === "USER_PHOTO") {
+      d.imageUrl = userImageUris[i % userImageUris.length];
+      i++;
+    }
+  }
 }
 
 export async function POST(req: Request) {
@@ -156,6 +172,7 @@ export async function POST(req: Request) {
     notes: body.notes ?? "",
     language: body.language,
     targetSlideCount: body.targetSlideCount,
+    userImageUris: body.userImageUris,
   };
 
   const claudeDrafts = await generateWithClaude(input);
@@ -169,6 +186,7 @@ export async function POST(req: Request) {
   }
 
   drafts = ensureRequiredLayouts(drafts);
+  resolveUserImages(drafts, input.userImageUris);
   if (body.useStockImages) await resolveImages(drafts);
 
   const slides = draftsToSlides(input.presentationId, drafts);

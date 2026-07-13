@@ -25,6 +25,7 @@ export interface GenerateInput {
   notes: string;
   language?: string; // e.g. "English", "Arabic", "French", "German", "Russian"
   targetSlideCount?: number;
+  userImageUris?: string[]; // user's own photo library, preferred over stock images
 }
 
 // Shape a single slide can take, before it's given ids/order. `chart` is left
@@ -367,6 +368,7 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
   const objective = goal.trim() || "commit to the plan";
   const points = input.notes.trim() ? clauses(input.notes).map(tidy) : [];
   const has = points.length > 0;
+  const useUserPhotos = (input.userImageUris?.length ?? 0) > 0;
 
   // Prefer real data from notes; else synthesize for data topics.
   const notesChart = buildChartFromNotes(input.notes);
@@ -473,7 +475,7 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
     // a stat_kpi slide separates them, so two content_bullets never land back
     // to back.
     layoutType: chart ? "chart_focus" : "content_image_left",
-    imageQuery: chart ? undefined : `${title} business strategy`,
+    imageQuery: chart ? undefined : useUserPhotos ? "USER_PHOTO" : `${title} business strategy`,
   };
   if (chart) insight.chart = chart;
   drafts.push(insight);
@@ -487,7 +489,7 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
       "Doing nothing locks in the fragility",
     ],
     icons: ["warning", "person", "lock"],
-    imageQuery: `${title} team discussion`,
+    imageQuery: useUserPhotos ? "USER_PHOTO" : `${title} team discussion`,
     speakerNotes:
       "Make it personal to the audience's goals. The point is stakes, not analysis — why they can't let this ride.",
     layoutType: insight.layoutType === "content_image_left" ? "content_bullets" : "content_image_right",

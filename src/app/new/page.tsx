@@ -47,7 +47,7 @@ const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
 
 export default function NewPresentationPage() {
   const router = useRouter();
-  const { ready, user, templates, createPresentation, setSlides, updatePresentation } =
+  const { ready, user, templates, createPresentation, setSlides, updatePresentation, getUserImages } =
     useStore();
 
   const [step, setStep] = useState(0);
@@ -64,8 +64,11 @@ export default function NewPresentationPage() {
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [useStockImages, setUseStockImages] = useState(false);
+  const [useUserImages, setUseUserImages] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+
+  const userImages = getUserImages();
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -110,10 +113,20 @@ export default function NewPresentationPage() {
       status: "generating",
     });
     try {
+      const userImageUris =
+        useUserImages && userImages.length
+          ? userImages.map((i) => i.dataUri || i.fileUrl).filter(Boolean)
+          : undefined;
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presentationId: pres.id, mode, useStockImages, ...form }),
+        body: JSON.stringify({
+          presentationId: pres.id,
+          mode,
+          useStockImages,
+          userImageUris,
+          ...form,
+        }),
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = (await res.json()) as { slides: Slide[] };
@@ -406,6 +419,38 @@ export default function NewPresentationPage() {
                   />
                 </button>
               </div>
+
+              {/* Use the user's own photo library instead of stock images. */}
+              {userImages.length > 0 && (
+                <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-line bg-paper p-4">
+                  <div>
+                    <p className="text-sm font-medium text-ink">
+                      Use my photos in slides
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-ink-muted">
+                      Prefer your {userImages.length} uploaded photo
+                      {userImages.length === 1 ? "" : "s"} over stock images.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={useUserImages}
+                    onClick={() => setUseUserImages((v) => !v)}
+                    className={cn(
+                      "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                      useUserImages ? "bg-accent" : "bg-line-strong",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all",
+                        useUserImages ? "left-[22px]" : "left-0.5",
+                      )}
+                    />
+                  </button>
+                </div>
+              )}
 
               {/* Slide count (drives the deck's target length). */}
               <div className="mt-8">

@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import type { LayoutType, Slide } from "@/lib/types";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { IconPlus, IconTrash, IconCopy } from "@/components/ui/icons";
 import { resolveLayoutId } from "@/lib/layouts/specs";
+import { useStore } from "@/lib/store";
+
+const IMAGE_LAYOUTS = new Set(["content_image_right", "content_image_left"]);
 
 const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "title_hero", label: "Title — hero" },
@@ -38,6 +42,10 @@ export function Inspector({
   onDelete: () => void;
   canDelete: boolean;
 }) {
+  const { getUserImages } = useStore();
+  const layoutId = resolveLayoutId(slide);
+  const userImages = IMAGE_LAYOUTS.has(layoutId) ? getUserImages() : [];
+
   const setLine = (i: number, value: string) => {
     const content = [...slide.content];
     content[i] = value;
@@ -115,6 +123,47 @@ export function Inspector({
             )}
           </div>
         </div>
+
+        {IMAGE_LAYOUTS.has(layoutId) && (
+          <Field label="Slide photo">
+            <div className="space-y-2">
+              {slide.imageUrl && (
+                <div className="h-24 w-full overflow-hidden rounded-lg border border-line">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={slide.imageUrl}
+                    alt="Slide photo"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              )}
+              {userImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {userImages.slice(0, 6).map((img) => (
+                    <button
+                      key={img.id}
+                      onClick={() => onChange({ imageUrl: img.dataUri || img.fileUrl })}
+                      className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.dataUri || img.fileUrl}
+                        alt={img.fileName}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <Link
+                href="/images"
+                className="inline-block text-[13px] text-accent hover:text-accent-hover"
+              >
+                {userImages.length > 0 ? "View all photos →" : "Upload photos →"}
+              </Link>
+            </div>
+          </Field>
+        )}
 
         <Field label="Speaker notes" htmlFor="notes" hint="Not shown on slide">
           <Textarea

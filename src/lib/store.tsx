@@ -16,6 +16,7 @@ import type {
   Template,
   UploadedStyleReference,
   User,
+  UserImage,
 } from "./types";
 import { nowIso, uid } from "./utils";
 import { BUILT_IN_TEMPLATES } from "./templates";
@@ -50,6 +51,7 @@ interface Db {
   uploadedTemplates: Template[];
   styleRefs: UploadedStyleReference[];
   exportJobs: ExportJob[];
+  userImages: UserImage[];
 }
 
 function emptyDb(): Db {
@@ -60,6 +62,7 @@ function emptyDb(): Db {
     uploadedTemplates: [],
     styleRefs: [],
     exportJobs: [],
+    userImages: [],
   };
 }
 
@@ -123,6 +126,11 @@ interface StoreValue {
   addStyleRef: (
     r: Omit<UploadedStyleReference, "id" | "createdAt" | "userId">,
   ) => UploadedStyleReference;
+
+  // user image library
+  addUserImage: (file: File) => Promise<UserImage>;
+  removeUserImage: (id: string) => void;
+  getUserImages: () => UserImage[];
 
   // presentations
   presentations: Presentation[];
@@ -376,6 +384,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [commit, user],
   );
 
+  // ---- user image library ----
+  const addUserImage = useCallback(
+    (file: File): Promise<UserImage> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img: UserImage = {
+            id: uid("img"),
+            userId: user?.id ?? "anon",
+            fileName: file.name,
+            dataUri: reader.result as string,
+            uploadedAt: nowIso(),
+          };
+          commit((d) => ({ ...d, userImages: [...d.userImages, img] }));
+          resolve(img);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    },
+    [commit, user],
+  );
+
+  const removeUserImage = useCallback(
+    (id: string) => {
+      commit((d) => ({ ...d, userImages: d.userImages.filter((i) => i.id !== id) }));
+    },
+    [commit],
+  );
+
+  const getUserImages = useCallback(
+    () => db.userImages.filter((i) => !user || i.userId === user.id),
+    [db.userImages, user],
+  );
+
   // ---- presentations ----
   const presentations = useMemo(
     () =>
@@ -604,6 +647,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addUploadedTemplate,
     styleRefs: db.styleRefs,
     addStyleRef,
+    addUserImage,
+    removeUserImage,
+    getUserImages,
     presentations,
     getPresentation,
     createPresentation,

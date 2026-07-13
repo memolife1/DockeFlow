@@ -119,3 +119,15 @@ export const IconDoc = (p: P) => (
     <path d="M14 3v5h5M9 13h6M9 17h6" />
   </S>
 );
+export const IconImage = (p: P) => (
+  <S {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <path d="m21 15-5-5L5 21" />
+  </S>
+);
+export const IconX = (p: P) => (
+  <S {...p}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </S>
+);

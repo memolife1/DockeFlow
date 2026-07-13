@@ -191,6 +191,18 @@ export interface TemplateTheme {
   };
 }
 
+// A photo a user uploads to use in their own slides instead of stock images
+// (event photos, product shots, team photos, etc.).
+export interface UserImage {
+  id: string;
+  userId: string;
+  fileName: string;
+  dataUri: string; // base64 data URI, stored locally
+  fileUrl?: string; // Supabase Storage URL when available
+  tags?: string[];
+  uploadedAt: string;
+}
+
 export interface UploadedStyleReference {
   id: string;
   userId: string;

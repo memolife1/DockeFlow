@@ -13,11 +13,13 @@ import {
   IconLayers,
   IconSettings,
   IconPlus,
+  IconImage,
 } from "@/components/ui/icons";
 
 const NAV = [
   { href: "/dashboard", label: "Presentations", icon: IconGrid },
   { href: "/templates", label: "Templates", icon: IconLayers },
+  { href: "/images", label: "Images", icon: IconImage },
   { href: "/settings", label: "Settings", icon: IconSettings },
 ];
 
