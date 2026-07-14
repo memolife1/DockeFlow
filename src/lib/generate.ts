@@ -48,6 +48,8 @@ export interface DraftSlide {
   team?: unknown; // TeamMember[] once normalized
   imageQuery?: string;
   imageUrl?: string;
+  imageQueries?: unknown; // string[] once normalized
+  imageUrls?: string[]; // resolved server-side, one per imageQueries entry
   sectionNumber?: number;
 }
 
@@ -638,6 +640,10 @@ export function draftsToSlides(
     team: normalizeTeam(d.team),
     imageQuery: d.imageQuery,
     imageUrl: d.imageUrl,
+    imageQueries: Array.isArray(d.imageQueries)
+      ? d.imageQueries.map(String).filter(Boolean).slice(0, 4)
+      : undefined,
+    imageUrls: d.imageUrls,
     sectionNumber: d.sectionNumber,
   }));
 }

@@ -172,6 +172,8 @@ export interface Slide {
   team?: TeamMember[];
   imageQuery?: string; // stock-photo search for image zones
   imageUrl?: string; // resolved image URL (set at generation time)
+  imageQueries?: string[]; // multi-image layouts (up to 4 zones)
+  imageUrls?: string[]; // resolved URLs, one per imageQueries entry
   sectionNumber?: number; // for section_divider numbering
 }
 

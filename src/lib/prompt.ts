@@ -35,7 +35,8 @@ Produce a deck as JSON matching exactly this shape:
       "funnel": [{ "label": "Leads", "value": "1,240" }],
       "swot": { "s": ["..."], "w": ["..."], "o": ["..."], "t": ["..."] },
       "team": [{ "name": "Full Name", "role": "Title" }],
-      "imageQuery": "2-4 word photo search, only for image-zone layouts",
+      "imageQuery": "2-4 word photo search, only for single-image-zone layouts",
+      "imageQueries": ["3-4 word photo search", "..."],
       "sectionNumber": 1,
       "speakerNotes": "string — the verbal 'so what', see rules",
       "chart": {
@@ -65,9 +66,9 @@ THE 20 LAYOUTS — pick the one whose slots actually fit the content:
 - team_grid: 3-4 people — "team" (name + role). Only use if the topic involves a named team/org.
 - closing_cta: final decision/next steps — bullets become an ordered ask (3-4 items).
 - image_full_bleed: one dramatic full-slide photo with a dark gradient caption band — title + optional one-line subtitle. imageQuery required.
-- image_two_column: two full-height photos side by side with a dark caption bar naming the moment. imageQuery required (one search, applied to both zones).
-- image_four_grid: four photos in a 2x2 grid, each with a short caption — use "bullets" (up to 4, one per photo) as the captions. imageQuery required.
-- image_showcase: one large hero photo (55% width) beside three stacked supporting photos, with a title overlay on the hero. imageQuery required.
+- image_two_column: two full-height photos side by side with a dark caption bar naming the moment. imageQueries required — EXACTLY 2 distinct scene searches, one per zone.
+- image_four_grid: four photos in a 2x2 grid, each with a short caption — use "bullets" (up to 4, one per photo) as the captions. imageQueries required — EXACTLY 4 distinct scene searches, one per photo.
+- image_showcase: one large hero photo (55% width) beside three stacked supporting photos, with a title overlay on the hero. imageQueries required — EXACTLY 3 distinct scene searches (main hero photo first, then two supporting detail shots).
 
 ICON NAMES (use exactly these, one per bullet where a layout's rule calls for it — omit or use null when a bullet has no natural icon): ${ICON_LIST}
 
@@ -141,6 +142,7 @@ export interface ModelSlide {
   swot?: unknown;
   team?: unknown;
   imageQuery?: unknown;
+  imageQueries?: unknown;
   sectionNumber?: unknown;
   speakerNotes?: string;
   chart?: unknown;
@@ -240,6 +242,7 @@ export function modelSlidesToDrafts(slides: ModelSlide[]): DraftSlideT[] {
       swot: s.swot,
       team: s.team,
       imageQuery: typeof s.imageQuery === "string" ? s.imageQuery : undefined,
+      imageQueries: s.imageQueries,
       sectionNumber:
         typeof s.sectionNumber === "number" ? s.sectionNumber : undefined,
     } satisfies DraftSlideT;

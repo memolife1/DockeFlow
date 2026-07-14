@@ -59,7 +59,11 @@ export function ExportDialog({
         // Resolve slide images to data URIs via the server proxy so they can
         // be embedded. Silent fallback (solid theme fill) on any failure.
         const imageData: Record<string, string> = {};
-        const urls = [...new Set(slides.map((s) => s.imageUrl).filter(Boolean))] as string[];
+        const urls = [
+          ...new Set(
+            slides.flatMap((s) => [s.imageUrl, ...(s.imageUrls ?? [])]).filter(Boolean),
+          ),
+        ] as string[];
         await Promise.all(
           urls.map(async (url) => {
             try {

@@ -141,6 +141,48 @@ async function resolveImages(drafts: DraftSlide[]): Promise<void> {
   );
 }
 
+// Resolve each imageQueries[] entry -> a Pexels URL for the 3 multi-image
+// event layouts, populating imageUrls[] (same index correspondence).
+const MULTI_IMAGE_ZONES: Record<string, number> = {
+  image_two_column: 2,
+  image_four_grid: 4,
+  image_showcase: 3,
+};
+
+async function resolveMultiImages(drafts: DraftSlide[]): Promise<void> {
+  const key = process.env.PEXELS_API_KEY;
+  if (!key) return;
+  await Promise.all(
+    drafts.map(async (d) => {
+      const zones = MULTI_IMAGE_ZONES[d.layoutType as string];
+      const queries = Array.isArray(d.imageQueries)
+        ? (d.imageQueries as unknown[]).map(String).filter(Boolean)
+        : [];
+      if (!zones || queries.length === 0) return;
+      const urls = await Promise.all(
+        queries.slice(0, zones).map(async (q) => {
+          try {
+            const res = await fetch(
+              `https://api.pexels.com/v1/search?query=${encodeURIComponent(
+                q,
+              )}&per_page=1&orientation=landscape`,
+              { headers: { Authorization: key } },
+            );
+            if (!res.ok) return undefined;
+            const data = (await res.json()) as {
+              photos?: { src?: { landscape?: string; large2x?: string } }[];
+            };
+            return data.photos?.[0]?.src?.landscape ?? data.photos?.[0]?.src?.large2x;
+          } catch {
+            return undefined;
+          }
+        }),
+      );
+      d.imageUrls = urls.filter((u): u is string => !!u);
+    }),
+  );
+}
+
 // Assign the user's own uploaded photos (data URIs) to any slide the model
 // flagged with imageQuery: "USER_PHOTO", rotating through the library so
 // multiple image slides don't all show the same photo.
@@ -195,7 +237,10 @@ export async function POST(req: Request) {
   drafts = ensureRequiredLayouts(drafts);
   if (input.targetSlideCount) drafts = padOrTrimToTarget(drafts, input.targetSlideCount);
   resolveUserImages(drafts, input.userImageUris);
-  if (body.useStockImages) await resolveImages(drafts);
+  if (body.useStockImages) {
+    await resolveImages(drafts);
+    await resolveMultiImages(drafts);
+  }
 
   const slides = draftsToSlides(input.presentationId, drafts);
   return NextResponse.json({ slides, source });

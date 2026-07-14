@@ -799,7 +799,7 @@ const imageFullBleed: LayoutFn = (s, ctx) => {
 };
 
 const imageTwoColumn: LayoutFn = (s, ctx) => {
-  const urls = [s.imageUrl, s.imageUrl];
+  const urls = [s.imageUrls?.[0] ?? s.imageUrl, s.imageUrls?.[1]];
   const els: LayoutEl[] = [
     { kind: "image", x: 0, y: 0, w: 6.5, h: 6.5, url: urls[0], query: s.imageQuery, fallback: "surfaceAlt" },
     { kind: "image", x: 6.83, y: 0, w: 6.5, h: 6.5, url: urls[1], query: s.imageQuery, fallback: "surfaceAlt" },
@@ -833,7 +833,7 @@ const imageFourGrid: LayoutFn = (s, ctx) => {
       y: p.y,
       w,
       h,
-      url: s.imageUrl,
+      url: s.imageUrls?.[i] ?? (i === 0 ? s.imageUrl : undefined),
       query: s.imageQuery,
       fallback: "surfaceAlt",
     });
@@ -857,7 +857,16 @@ const imageShowcase: LayoutFn = (s, ctx) => {
   const rightW = W - leftW;
   const rightH = H / 3;
   const els: LayoutEl[] = [
-    { kind: "image", x: 0, y: 0, w: leftW, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" },
+    {
+      kind: "image",
+      x: 0,
+      y: 0,
+      w: leftW,
+      h: H,
+      url: s.imageUrls?.[0] ?? s.imageUrl,
+      query: s.imageQuery,
+      fallback: "dark",
+    },
   ];
   for (let i = 0; i < 3; i++) {
     els.push({
@@ -866,7 +875,7 @@ const imageShowcase: LayoutFn = (s, ctx) => {
       y: rightH * i,
       w: rightW,
       h: rightH,
-      url: s.imageUrl,
+      url: s.imageUrls?.[i + 1],
       query: s.imageQuery,
       fallback: "surfaceAlt",
     });
