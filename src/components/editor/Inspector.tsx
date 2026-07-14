@@ -7,6 +7,7 @@ import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { IconPlus, IconTrash, IconCopy, IconUpload, IconX } from "@/components/ui/icons";
 import { resolveLayoutId } from "@/lib/layouts/specs";
+import { cropDataUriTo16x9 } from "@/lib/cropImage";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -185,7 +186,11 @@ export function Inspector({
                       {userImages.slice(0, 6).map((img) => (
                         <button
                           key={img.id}
-                          onClick={() => onChange({ imageUrl: img.dataUri || img.fileUrl })}
+                          onClick={async () => {
+                            const src = img.dataUri || img.fileUrl;
+                            const cropped = src ? await cropDataUriTo16x9(src) : src;
+                            onChange({ imageUrl: cropped });
+                          }}
                           className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -204,6 +209,9 @@ export function Inspector({
                   >
                     {userImages.length > 0 ? "View all photos →" : "Upload photos →"}
                   </Link>
+                  <p className="text-[11px] text-ink-faint">
+                    Images are automatically cropped to 16:9 to fit slide dimensions.
+                  </p>
                 </div>
               </Field>
             )}

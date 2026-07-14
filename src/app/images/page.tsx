@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/Misc";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { IconImage, IconUpload, IconTrash } from "@/components/ui/icons";
+import { cropTo16x9 } from "@/lib/cropImage";
 
 const ACCEPT = ".jpg,.jpeg,.png,.webp";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -34,7 +35,11 @@ export default function ImagesPage() {
     }
     setUploading(true);
     try {
-      for (const file of list) await addUserImage(file);
+      for (const file of list) {
+        const { blob } = await cropTo16x9(file);
+        const cropped = new File([blob], file.name, { type: "image/jpeg" });
+        await addUserImage(cropped);
+      }
     } finally {
       setUploading(false);
     }
@@ -87,6 +92,10 @@ export default function ImagesPage() {
           </p>
           {error && <p className="mt-2 text-[13px] text-red-600">{error}</p>}
         </div>
+
+        <p className="mt-3 text-[12px] text-ink-faint">
+          Images are automatically cropped to 16:9 to fit slide dimensions.
+        </p>
 
         <div className="mt-8">
           {images.length === 0 ? (
