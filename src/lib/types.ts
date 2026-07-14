@@ -138,7 +138,8 @@ export interface Presentation {
     surface?: string; // hex, no "#"
     ink?: string; // hex, no "#"
     backgroundDesign?: string; // BackgroundDesignKey from lib/backgroundDesigns
-    fontFamily?: "sans" | "serif";
+    fontFamily?: "sans" | "serif"; // heading font
+    bodyFontFamily?: "sans" | "serif"; // body font, independent of heading
     backgroundImageUri?: string; // full-bleed background photo, data URI
   };
   // A brand logo watermark applied to every slide (preview + PPTX export).

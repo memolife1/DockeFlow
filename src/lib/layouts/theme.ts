@@ -103,6 +103,7 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
 
   // A Design-tab font choice is a deliberate full override — it wins over
   // whatever the brand extracted, unlike the color roles above which layer.
+  // Heading and body fonts are independently overridable.
   const effectiveFontFamily = overrides?.fontFamily ?? t.fontFamily;
   const serif = effectiveFontFamily === "serif";
   const fontHead = overrides?.fontFamily
@@ -110,7 +111,13 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
       ? "Georgia"
       : "Plus Jakarta Sans"
     : brand?.fontHead || (serif ? "Georgia" : "Plus Jakarta Sans");
-  const fontBody = overrides?.fontFamily ? "Plus Jakarta Sans" : brand?.fontBody || "Plus Jakarta Sans";
+
+  const bodySerif = overrides?.bodyFontFamily === "serif";
+  const fontBody = overrides?.bodyFontFamily
+    ? bodySerif
+      ? "Georgia"
+      : "Plus Jakarta Sans"
+    : brand?.fontBody || "Plus Jakarta Sans";
 
   return {
     colors,
@@ -119,7 +126,9 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
     fontHeadCss: serif
       ? '"Iowan Old Style", Palatino, Georgia, serif'
       : `"${fontHead}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`,
-    fontBodyCss: `"${fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`,
+    fontBodyCss: bodySerif
+      ? '"Iowan Old Style", Palatino, Georgia, serif'
+      : `"${fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`,
     chartPalette: [
       effPrimary,
       colors.primaryShade,

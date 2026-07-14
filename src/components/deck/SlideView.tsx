@@ -73,7 +73,7 @@ export function SlideView({
             src={spec.backgroundImageUri}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
-            style={{ pointerEvents: "none" }}
+            style={{ pointerEvents: "none", zIndex: 0 }}
           />
           <div
             className="absolute inset-0"
@@ -81,6 +81,7 @@ export function SlideView({
               background: `#${spec.colors[resolved.background]}`,
               opacity: 0.15,
               pointerEvents: "none",
+              zIndex: 0,
             }}
           />
         </>
@@ -92,6 +93,7 @@ export function SlideView({
             backgroundImage: design.css,
             backgroundSize: design.size,
             pointerEvents: "none",
+            zIndex: 1,
           }}
         />
       )}
@@ -127,6 +129,7 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
     top: px(el.y, "y"),
     width: px(el.w, "x"),
     height: px(el.h, "y"),
+    zIndex: 2,
   };
 
   if (el.kind === "shape") {

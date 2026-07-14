@@ -260,10 +260,15 @@ export function Inspector({
           surfaceHex={surfaceHex}
           inkHex={inkHex}
           fontFamily={fontFamily}
+          bodyFontFamily={overrides?.bodyFontFamily ?? "sans"}
           backgroundDesign={backgroundDesign}
           backgroundImageUri={overrides?.backgroundImageUri}
           onSetColor={(key, hex) => setOverride({ [key]: stripHash(hex) })}
           onSetFontFamily={(f) => setOverride({ fontFamily: f })}
+          onSetBodyFontFamily={(f) => setOverride({ bodyFontFamily: f })}
+          onResetColors={() =>
+            setOverride({ accent: undefined, surface: undefined, ink: undefined })
+          }
           onSetBackgroundDesign={(d) => setOverride({ backgroundDesign: d })}
           onSetBackgroundImage={(dataUri) => setOverride({ backgroundImageUri: dataUri })}
           logos={logos}
@@ -309,10 +314,13 @@ function DesignTab({
   surfaceHex,
   inkHex,
   fontFamily,
+  bodyFontFamily,
   backgroundDesign,
   backgroundImageUri,
   onSetColor,
   onSetFontFamily,
+  onSetBodyFontFamily,
+  onResetColors,
   onSetBackgroundDesign,
   onSetBackgroundImage,
   logos,
@@ -323,10 +331,13 @@ function DesignTab({
   surfaceHex: string;
   inkHex: string;
   fontFamily: "sans" | "serif";
+  bodyFontFamily: "sans" | "serif";
   backgroundDesign: BackgroundDesignKey;
   backgroundImageUri?: string;
   onSetColor: (key: "accent" | "surface" | "ink", hex: string) => void;
   onSetFontFamily: (f: "sans" | "serif") => void;
+  onSetBodyFontFamily: (f: "sans" | "serif") => void;
+  onResetColors: () => void;
   onSetBackgroundDesign: (d: BackgroundDesignKey) => void;
   onSetBackgroundImage: (dataUri: string | undefined) => void;
   logos: BrandLogo[];
@@ -352,6 +363,12 @@ function DesignTab({
           <ColorPicker label="Background" hex={surfaceHex} onChange={(h) => onSetColor("surface", h)} />
           <ColorPicker label="Text color" hex={inkHex} onChange={(h) => onSetColor("ink", h)} />
         </div>
+        <button
+          onClick={onResetColors}
+          className="mt-3 text-[12px] font-medium text-ink-muted hover:text-accent"
+        >
+          Reset colors to template defaults
+        </button>
       </div>
 
       <div>
@@ -387,21 +404,45 @@ function DesignTab({
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
           Typography
         </p>
-        <div className="flex gap-2">
-          {(["sans", "serif"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => onSetFontFamily(f)}
-              className={cn(
-                "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
-                fontFamily === f
-                  ? "border-accent bg-accent-soft text-accent"
-                  : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
-              )}
-            >
-              {f === "sans" ? "Sans-serif" : "Serif"}
-            </button>
-          ))}
+        <div className="space-y-3">
+          <div>
+            <p className="mb-1.5 text-[12px] text-ink-soft">Heading font</p>
+            <div className="flex gap-2">
+              {(["sans", "serif"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => onSetFontFamily(f)}
+                  className={cn(
+                    "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
+                    fontFamily === f
+                      ? "border-accent bg-accent-soft text-accent"
+                      : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                  )}
+                >
+                  {f === "sans" ? "Sans-serif" : "Serif"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-[12px] text-ink-soft">Body font</p>
+            <div className="flex gap-2">
+              {(["sans", "serif"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => onSetBodyFontFamily(f)}
+                  className={cn(
+                    "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
+                    bodyFontFamily === f
+                      ? "border-accent bg-accent-soft text-accent"
+                      : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                  )}
+                >
+                  {f === "sans" ? "Sans-serif" : "Serif"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
