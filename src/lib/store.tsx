@@ -122,7 +122,9 @@ interface StoreValue {
 
   // templates
   templates: Template[];
-  addUploadedTemplate: (t: Omit<Template, "id" | "createdAt">) => Template;
+  addUploadedTemplate: (
+    t: Omit<Template, "id" | "createdAt"> & { stableId?: string },
+  ) => Template;
 
   // style references
   styleRefs: UploadedStyleReference[];
@@ -239,8 +241,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           );
           const newTemplates = brands
             .filter((b) => !existingNames.has(b.name))
-            .map((brand) => ({
-              id: uid("tpl"),
+            .map(({ _rowId, ...brand }) => ({
+              id: `brand-${_rowId}`,
               name: brand.name || "Custom brand",
               category: "Uploaded",
               description:
@@ -248,8 +250,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               sourceType: "uploaded" as const,
               theme: {
                 accent: `#${brand.roles?.primary ?? "2563EB"}`,
-                surface: "#ffffff",
-                ink: "#1c1917",
+                surface: `#${brand.roles?.surface ?? "FFFFFF"}`,
+                ink: `#${brand.roles?.dark ?? "1c1917"}`,
                 fontFamily: "sans" as const,
                 character: "Your brand · extracted",
                 brand,
@@ -367,8 +369,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addUploadedTemplate = useCallback(
-    (t: Omit<Template, "id" | "createdAt">) => {
-      const tpl: Template = { ...t, id: uid("tpl"), createdAt: nowIso() };
+    (t: Omit<Template, "id" | "createdAt"> & { stableId?: string }) => {
+      const { stableId, ...rest } = t;
+      const tpl: Template = { ...rest, id: stableId ?? uid("tpl"), createdAt: nowIso() };
       commit((d) => ({
         ...d,
         uploadedTemplates: [...d.uploadedTemplates, tpl],

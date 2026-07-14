@@ -70,6 +70,10 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
   if (contrast(WHITE, dark) < 4.5) dark = mix(primary, NEAR_BLACK, 0.9);
   if (contrast(WHITE, dark) < 4.5) dark = NEAR_BLACK;
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[buildThemeSpec]", { hasBrand: !!brand, primary, dark });
+  }
+
   // Accent defaults to a deeper cut of the primary (keeps palettes cohesive);
   // brands may supply a genuine second color, and the Design tab's single
   // accent control sets both primary and accent to the same hex.

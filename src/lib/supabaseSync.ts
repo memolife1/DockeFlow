@@ -116,26 +116,34 @@ interface BrandThemeRow {
 
 export async function saveBrandThemeToCloud(
   brand: NonNullable<TemplateTheme["brand"]>,
-): Promise<void> {
-  if (!supabase) return;
+): Promise<string | undefined> {
+  if (!supabase) return undefined;
   const userId = await currentUserId();
-  if (!userId) return;
-  const { error } = await supabase.from("brand_themes").insert({
-    user_id: userId,
-    name: brand.name || "Custom brand",
-    primary_color: brand.roles?.primary ?? "2563EB",
-    dark_color: brand.roles?.dark ?? "1A1B21",
-    accent_color: brand.roles?.accent ?? brand.roles?.primary ?? "2563EB",
-    surface_color: brand.roles?.surface ?? "FFFFFF",
-    font_head: brand.fontHead ?? null,
-    font_body: brand.fontBody ?? null,
-    logo_data_uri: brand.logoDataUri ?? null,
-  });
-  if (error) console.error("Supabase brand save failed:", error.message);
+  if (!userId) return undefined;
+  const { data, error } = await supabase
+    .from("brand_themes")
+    .insert({
+      user_id: userId,
+      name: brand.name || "Custom brand",
+      primary_color: brand.roles?.primary ?? "2563EB",
+      dark_color: brand.roles?.dark ?? "1A1B21",
+      accent_color: brand.roles?.accent ?? brand.roles?.primary ?? "2563EB",
+      surface_color: brand.roles?.surface ?? "FFFFFF",
+      font_head: brand.fontHead ?? null,
+      font_body: brand.fontBody ?? null,
+      logo_data_uri: brand.logoDataUri ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    console.error("Supabase brand save failed:", error.message);
+    return undefined;
+  }
+  return (data as { id: string } | null)?.id;
 }
 
 export async function loadBrandThemesFromCloud(): Promise<
-  NonNullable<TemplateTheme["brand"]>[]
+  (NonNullable<TemplateTheme["brand"]> & { _rowId: string })[]
 > {
   if (!supabase) return [];
   const userId = await currentUserId();
@@ -150,6 +158,7 @@ export async function loadBrandThemesFromCloud(): Promise<
     return [];
   }
   return (data as BrandThemeRow[]).map((r) => ({
+    _rowId: r.id,
     name: r.name,
     roles: {
       primary: r.primary_color,

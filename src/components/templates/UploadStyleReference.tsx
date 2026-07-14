@@ -65,11 +65,22 @@ export function UploadStyleReference({
     );
   };
 
-  const finalizeTemplate = (name: string, brand?: Brand) => {
+  const finalizeTemplate = async (name: string, brand?: Brand) => {
     const accent = brand?.roles?.primary
       ? `#${brand.roles.primary}`
       : accentFromName(name);
+
+    // Save to Supabase first (if configured) so we get back the stable row ID
+    // — using that as the template's id (instead of a fresh random one) means
+    // a presentation's templateId still resolves after sign-out/sign-in.
+    let stableId: string | undefined;
+    if (brand && isSupabaseConfigured) {
+      const rowId = await saveBrandThemeToCloud(brand);
+      if (rowId) stableId = `brand-${rowId}`;
+    }
+
     const tpl = addUploadedTemplate({
+      stableId,
       name: (brand?.name || name.replace(/\.[^.]+$/, "")).slice(0, 40) || "Custom template",
       category: "Uploaded",
       description: brand
@@ -80,8 +91,8 @@ export function UploadStyleReference({
       sourceType: "uploaded",
       theme: {
         accent,
-        surface: brand?.roles?.surface ? `#${brand.roles.surface}` : "#ffffff",
-        ink: "#1c1917",
+        surface: `#${brand?.roles?.surface ?? "ffffff"}`,
+        ink: `#${brand?.roles?.dark ?? "1c1917"}`,
         fontFamily: brand?.fontFamily ?? "sans",
         character: brand ? "Your brand · extracted" : "Custom · from your file",
         brand,
@@ -89,7 +100,8 @@ export function UploadStyleReference({
     });
     setState("done");
     onUploaded?.(tpl);
-    if (brand && isSupabaseConfigured) void saveBrandThemeToCloud(brand);
+    // Non-Supabase mode never got a chance to save above — fire-and-forget.
+    if (brand && !isSupabaseConfigured) void saveBrandThemeToCloud(brand);
   };
 
   const handlePptx = async (file: File) => {
@@ -151,7 +163,7 @@ export function UploadStyleReference({
         fileUrl: url,
         extractedAccent: accent,
       });
-      finalizeTemplate(file.name);
+      void finalizeTemplate(file.name);
     }, 1000);
   };
 
@@ -287,7 +299,7 @@ export function UploadStyleReference({
             </p>
           )}
           <div className="mt-4 flex gap-2">
-            <Button size="sm" onClick={() => finalizeTemplate(lastName, pendingBrand)}>
+            <Button size="sm" onClick={() => void finalizeTemplate(lastName, pendingBrand)}>
               Use this brand
             </Button>
             <Button size="sm" variant="secondary" onClick={reset}>
