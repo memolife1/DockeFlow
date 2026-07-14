@@ -30,6 +30,7 @@ export async function POST(req: Request) {
   try {
     const buf = await file.arrayBuffer();
     const extracted = await extractBrandFromPptx(buf, file.name);
+    console.log("[brand-extract]", { name: extracted.name, colors: extracted.colors });
 
     const dk = normHex(extracted.colors.dk1, "1A1B21");
     const lt = normHex(extracted.colors.lt1, "FFFFFF");

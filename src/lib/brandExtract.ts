@@ -28,12 +28,15 @@ export interface ExtractedBrand {
 }
 
 function tag(xml: string, name: string): string | undefined {
-  // <a:dk1><a:srgbClr val="112233"/></a:dk1>  OR  <a:sysClr val="windowText" lastClr="000000"/>
-  const re = new RegExp(
-    `<a:${name}>\\s*<a:(?:srgbClr|sysClr)[^>]*(?:val|lastClr)="([0-9A-Fa-f]{6})"[^>]*/?>`,
-    "i",
-  );
-  const m = xml.match(re);
+  // Find the <a:NAME>...</a:NAME> block first (tolerating attributes on the
+  // opening tag and any whitespace/newlines), then search within it for a
+  // srgbClr/sysClr color — this handles real-world PPTX theme XML that isn't
+  // as tightly formatted as PowerPoint's own defaults.
+  const blockRe = new RegExp(`<a:${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/a:${name}>`, "i");
+  const block = xml.match(blockRe)?.[1];
+  if (!block) return undefined;
+  const colorRe = /<a:(?:srgbClr|sysClr)[^>]*\s(?:val|lastClr)="([0-9A-Fa-f]{6})"/i;
+  const m = block.match(colorRe);
   return m?.[1]?.toUpperCase();
 }
 
