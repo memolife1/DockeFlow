@@ -36,7 +36,11 @@ export type LayoutId =
   | "swot_matrix"
   | "chart_focus"
   | "team_grid"
-  | "closing_cta";
+  | "closing_cta"
+  | "image_full_bleed"
+  | "image_two_column"
+  | "image_four_grid"
+  | "image_showcase";
 
 // Legacy layout names (existing decks). Mapped to the nearest LayoutId at
 // render time — see resolveLayoutId() in lib/layouts/specs.ts.

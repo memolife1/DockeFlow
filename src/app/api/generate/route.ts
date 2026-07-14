@@ -105,7 +105,12 @@ function ensureRequiredLayouts(drafts: DraftSlide[]): DraftSlide[] {
 
 // Resolve imageQuery -> a real Pexels URL for image-zone layouts. Best-effort:
 // any failure just leaves the layout's built-in placeholder/fallback color.
-const IMAGE_LAYOUTS = new Set(["title_hero", "content_image_right", "content_image_left"]);
+const IMAGE_LAYOUTS = new Set([
+  "title_hero",
+  "content_image_right",
+  "content_image_left",
+  "image_full_bleed",
+]);
 
 async function resolveImages(drafts: DraftSlide[]): Promise<void> {
   const key = process.env.PEXELS_API_KEY;

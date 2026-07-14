@@ -35,6 +35,10 @@ const LAYOUT_IDS: LayoutId[] = [
   "chart_focus",
   "team_grid",
   "closing_cta",
+  "image_full_bleed",
+  "image_two_column",
+  "image_four_grid",
+  "image_showcase",
 ];
 
 export function isLayoutId(v: string): v is LayoutId {
@@ -768,6 +772,119 @@ const closingCta: LayoutFn = (s, ctx) => {
   return { background: "dark", elements: els };
 };
 
+const imageFullBleed: LayoutFn = (s, ctx) => {
+  const els: LayoutEl[] = [
+    { kind: "image", x: 0, y: 0, w: W, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" },
+    box(0, 4.5, W, 3.0, "dark", { transparency: 45 }),
+    txt(M, 5.0, W - M * 2, 1.3, s.title, 38, "textOnDark", {
+      bold: true,
+      font: "head",
+      valign: "top",
+      lineSpacing: 1.05,
+      shrink: true,
+      maxLines: 2,
+    }),
+  ];
+  if (s.content[0]) {
+    els.push(
+      txt(M, 6.35, W - M * 2, 0.6, s.content[0], 18, "textOnDarkMuted", {
+        valign: "top",
+        lineSpacing: 1.2,
+        shrink: true,
+        maxLines: 1,
+      }),
+    );
+  }
+  return { background: "dark", elements: [...els, ...pageFooter(ctx, true)] };
+};
+
+const imageTwoColumn: LayoutFn = (s, ctx) => {
+  const urls = [s.imageUrl, s.imageUrl];
+  const els: LayoutEl[] = [
+    { kind: "image", x: 0, y: 0, w: 6.5, h: 6.5, url: urls[0], query: s.imageQuery, fallback: "surfaceAlt" },
+    { kind: "image", x: 6.83, y: 0, w: 6.5, h: 6.5, url: urls[1], query: s.imageQuery, fallback: "surfaceAlt" },
+    box(0, 6.6, W, 0.9, "dark"),
+    txt(0, 6.6, W, 0.9, s.title, 22, "textOnDark", {
+      bold: true,
+      font: "head",
+      align: "center",
+      valign: "middle",
+      shrink: true,
+      maxLines: 1,
+    }),
+  ];
+  return { background: "dark", elements: els };
+};
+
+const imageFourGrid: LayoutFn = (s, ctx) => {
+  const w = 6.5;
+  const h = 3.6;
+  const positions = [
+    { x: 0, y: 0 },
+    { x: 6.6, y: 0 },
+    { x: 0, y: 3.7 },
+    { x: 6.6, y: 3.7 },
+  ];
+  const els: LayoutEl[] = [];
+  positions.forEach((p, i) => {
+    els.push({
+      kind: "image",
+      x: p.x,
+      y: p.y,
+      w,
+      h,
+      url: s.imageUrl,
+      query: s.imageQuery,
+      fallback: "surfaceAlt",
+    });
+    const label = s.content[i];
+    if (label) {
+      els.push(box(p.x, p.y + h - 0.34, w, 0.34, "dark", { transparency: 25 }));
+      els.push(
+        txt(p.x + 0.15, p.y + h - 0.32, w - 0.3, 0.3, label, 12, "surface", {
+          valign: "middle",
+          shrink: true,
+          maxLines: 1,
+        }),
+      );
+    }
+  });
+  return { background: "dark", elements: els };
+};
+
+const imageShowcase: LayoutFn = (s, ctx) => {
+  const leftW = W * 0.55;
+  const rightW = W - leftW;
+  const rightH = H / 3;
+  const els: LayoutEl[] = [
+    { kind: "image", x: 0, y: 0, w: leftW, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" },
+  ];
+  for (let i = 0; i < 3; i++) {
+    els.push({
+      kind: "image",
+      x: leftW,
+      y: rightH * i,
+      w: rightW,
+      h: rightH,
+      url: s.imageUrl,
+      query: s.imageQuery,
+      fallback: "surfaceAlt",
+    });
+  }
+  els.push(box(0, H - 2.4, leftW, 2.4, "dark", { transparency: 35 }));
+  els.push(
+    txt(0.5, H - 1.9, leftW - 1.0, 1.4, s.title, 28, "textOnDark", {
+      bold: true,
+      font: "head",
+      valign: "bottom",
+      lineSpacing: 1.05,
+      shrink: true,
+      maxLines: 3,
+    }),
+  );
+  return { background: "dark", elements: els };
+};
+
 const LAYOUTS: Record<LayoutId, LayoutFn> = {
   title_hero: titleHero,
   title_split: titleSplit,
@@ -785,6 +902,10 @@ const LAYOUTS: Record<LayoutId, LayoutFn> = {
   chart_focus: chartFocus,
   team_grid: teamGrid,
   closing_cta: closingCta,
+  image_full_bleed: imageFullBleed,
+  image_two_column: imageTwoColumn,
+  image_four_grid: imageFourGrid,
+  image_showcase: imageShowcase,
 };
 
 export function resolveSlide(slide: Slide, ctx: ResolveCtx): ResolvedSlide {

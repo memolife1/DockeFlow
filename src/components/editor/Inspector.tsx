@@ -16,7 +16,14 @@ import {
   type BackgroundDesignKey,
 } from "@/lib/backgroundDesigns";
 
-const IMAGE_LAYOUTS = new Set(["content_image_right", "content_image_left"]);
+const IMAGE_LAYOUTS = new Set([
+  "content_image_right",
+  "content_image_left",
+  "image_full_bleed",
+  "image_two_column",
+  "image_four_grid",
+  "image_showcase",
+]);
 
 const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "title_hero", label: "Title — hero" },
@@ -35,6 +42,10 @@ const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "chart_focus", label: "Chart focus" },
   { value: "team_grid", label: "Team grid" },
   { value: "closing_cta", label: "Closing / next steps" },
+  { value: "image_full_bleed", label: "Image — full bleed" },
+  { value: "image_two_column", label: "Image — two column" },
+  { value: "image_four_grid", label: "Image — four grid" },
+  { value: "image_showcase", label: "Image — showcase" },
 ];
 
 const stripHash = (hex: string) => hex.replace("#", "").toUpperCase();
