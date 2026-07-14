@@ -14,12 +14,14 @@ import {
   IconSettings,
   IconPlus,
   IconImage,
+  IconBadge,
 } from "@/components/ui/icons";
 
 const NAV = [
   { href: "/dashboard", label: "Presentations", icon: IconGrid, tour: undefined },
   { href: "/templates", label: "Templates", icon: IconLayers, tour: "sidebar-templates" },
   { href: "/images", label: "Images", icon: IconImage, tour: "sidebar-images" },
+  { href: "/logos", label: "Logos", icon: IconBadge, tour: undefined },
   { href: "/settings", label: "Settings", icon: IconSettings, tour: "sidebar-settings" },
 ];
 

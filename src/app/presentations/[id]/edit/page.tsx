@@ -38,6 +38,7 @@ export default function EditorPage({
     duplicateSlide,
     deleteSlide,
     reorderSlides,
+    getBrandLogos,
   } = useStore();
 
   const presentation = getPresentation(id);
@@ -54,6 +55,10 @@ export default function EditorPage({
     ? getTemplate(presentation.templateId, uploaded)
     : undefined;
   const theme = template?.theme ?? templates[0].theme;
+  const logoWatermark = presentation?.logoWatermark;
+  const logoDataUri = logoWatermark
+    ? getBrandLogos().find((l) => l.id === logoWatermark.logoId)?.dataUri
+    : undefined;
 
   // Keep a valid selection as slides change.
   useEffect(() => {
@@ -175,6 +180,8 @@ export default function EditorPage({
                   themeOverrides={presentation.themeOverrides}
                   index={selected.orderIndex}
                   total={slides.length}
+                  logoWatermark={logoWatermark}
+                  logoDataUri={logoDataUri}
                 />
               </div>
               <p className="mt-3 text-center text-[12px] text-ink-muted">

@@ -137,6 +137,12 @@ export interface Presentation {
     fontFamily?: "sans" | "serif";
     backgroundImageUri?: string; // full-bleed background photo, data URI
   };
+  // A brand logo watermark applied to every slide (preview + PPTX export).
+  logoWatermark?: {
+    logoId: string;
+    position: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    size: "small" | "medium";
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -210,6 +216,16 @@ export interface UserImage {
   dataUri: string; // base64 data URI, stored locally
   fileUrl?: string; // Supabase Storage URL when available
   tags?: string[];
+  uploadedAt: string;
+}
+
+// A brand logo a user uploads, for watermarking slides (distinct from the
+// per-slide UserImage library).
+export interface BrandLogo {
+  id: string;
+  userId: string;
+  name: string;
+  dataUri: string; // base64 data URI, transparent background preserved
   uploadedAt: string;
 }
 

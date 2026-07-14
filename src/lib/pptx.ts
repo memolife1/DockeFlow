@@ -24,6 +24,8 @@ import { iconPngDataUri } from "./icons";
 export interface ExportOptions {
   // url -> data URI for image elements, pre-fetched by the caller.
   imageData?: Record<string, string>;
+  // Resolved brand logo, when presentation.logoWatermark is set.
+  logoDataUri?: string;
 }
 
 function safeFileName(title: string): string {
@@ -112,6 +114,9 @@ export async function exportDeckToPptx(
     }
     for (const el of resolved.elements) {
       renderEl(pptx, s, el, spec, options, iconCache);
+    }
+    if (presentation.logoWatermark && options.logoDataUri) {
+      renderWatermark(s, presentation.logoWatermark, options.logoDataUri);
     }
     if (slide.speakerNotes) s.addNotes(slide.speakerNotes);
   });
@@ -243,6 +248,28 @@ function renderImage(
       line: { type: "none" },
     });
   }
+}
+
+function renderWatermark(
+  s: pptxgen.Slide,
+  watermark: NonNullable<Presentation["logoWatermark"]>,
+  logoDataUri: string,
+) {
+  const h = watermark.size === "small" ? CANVAS_H * 0.06 : CANVAS_H * 0.09;
+  const maxW = CANVAS_W * 0.18;
+  const margin = 0.3;
+  const x = watermark.position.includes("left") ? margin : CANVAS_W - maxW - margin;
+  const y = watermark.position.includes("top") ? margin : CANVAS_H - h - margin;
+  // pptxgenjs's ImageProps has no opacity/transparency option, so the export
+  // renders the logo at full opacity (the HTML preview applies 0.82 opacity).
+  s.addImage({
+    data: logoDataUri,
+    x,
+    y,
+    w: maxW,
+    h,
+    sizing: { type: "contain", w: maxW, h },
+  });
 }
 
 function renderChart(

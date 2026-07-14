@@ -16,6 +16,7 @@ export async function exportDeckToPdf(
   presentation: Presentation,
   slides: Slide[],
   theme: TemplateTheme,
+  logoDataUri?: string,
 ): Promise<void> {
   const { default: html2canvas } = await import("html2canvas");
   const { default: jsPDF } = await import("jspdf");
@@ -51,6 +52,8 @@ export async function exportDeckToPdf(
           themeOverrides: presentation.themeOverrides,
           index: i,
           total: ordered.length,
+          logoWatermark: presentation.logoWatermark,
+          logoDataUri,
         }),
       );
 

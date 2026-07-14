@@ -131,3 +131,9 @@ export const IconX = (p: P) => (
     <path d="M18 6 6 18M6 6l12 12" />
   </S>
 );
+export const IconBadge = (p: P) => (
+  <S {...p}>
+    <circle cx="12" cy="9" r="6" />
+    <path d="m8.5 14-1.5 7 5-3 5 3-1.5-7" />
+  </S>
+);

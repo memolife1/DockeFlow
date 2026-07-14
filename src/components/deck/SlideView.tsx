@@ -34,6 +34,8 @@ export function SlideView({
   index,
   total,
   className,
+  logoWatermark,
+  logoDataUri,
 }: {
   slide: Slide;
   theme: TemplateTheme;
@@ -41,6 +43,8 @@ export function SlideView({
   index?: number;
   total?: number;
   className?: string;
+  logoWatermark?: Presentation["logoWatermark"];
+  logoDataUri?: string;
 }) {
   const spec = buildThemeSpec(theme, themeOverrides);
   const resolved = resolveSlide(slide, {
@@ -94,6 +98,24 @@ export function SlideView({
       {resolved.elements.map((el, i) => (
         <El key={i} el={el} spec={spec} />
       ))}
+      {logoWatermark && logoDataUri && (
+        <img
+          src={logoDataUri}
+          alt=""
+          style={{
+            position: "absolute",
+            ...(logoWatermark.position.includes("top") ? { top: "4%" } : { bottom: "4%" }),
+            ...(logoWatermark.position.includes("left") ? { left: "4%" } : { right: "4%" }),
+            height: logoWatermark.size === "small" ? "6%" : "9%",
+            maxWidth: "18%",
+            width: "auto",
+            objectFit: "contain",
+            opacity: 0.82,
+            zIndex: 20,
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -273,11 +295,15 @@ export function SlideThumb({
   theme,
   themeOverrides,
   className,
+  logoWatermark,
+  logoDataUri,
 }: {
   slide: Slide;
   theme: TemplateTheme;
   themeOverrides?: Presentation["themeOverrides"];
   className?: string;
+  logoWatermark?: Presentation["logoWatermark"];
+  logoDataUri?: string;
 }) {
   return (
     <div
@@ -286,7 +312,13 @@ export function SlideThumb({
         className,
       )}
     >
-      <SlideView slide={slide} theme={theme} themeOverrides={themeOverrides} />
+      <SlideView
+        slide={slide}
+        theme={theme}
+        themeOverrides={themeOverrides}
+        logoWatermark={logoWatermark}
+        logoDataUri={logoDataUri}
+      />
     </div>
   );
 }

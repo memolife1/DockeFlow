@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { LayoutType, Presentation, Slide, TemplateTheme } from "@/lib/types";
+import type { BrandLogo, LayoutType, Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { IconPlus, IconTrash, IconCopy, IconUpload, IconX } from "@/components/ui/icons";
@@ -58,7 +58,8 @@ export function Inspector({
   theme: TemplateTheme;
   onUpdatePresentation: (patch: Partial<Presentation>) => void;
 }) {
-  const { getUserImages } = useStore();
+  const { getUserImages, getBrandLogos } = useStore();
+  const logos = getBrandLogos();
   const [tab, setTab] = useState<"content" | "design">("content");
   const layoutId = resolveLayoutId(slide);
   const userImages = IMAGE_LAYOUTS.has(layoutId) ? getUserImages() : [];
@@ -254,6 +255,9 @@ export function Inspector({
           onSetFontFamily={(f) => setOverride({ fontFamily: f })}
           onSetBackgroundDesign={(d) => setOverride({ backgroundDesign: d })}
           onSetBackgroundImage={(dataUri) => setOverride({ backgroundImageUri: dataUri })}
+          logos={logos}
+          logoWatermark={presentation.logoWatermark}
+          onSetLogoWatermark={(w) => onUpdatePresentation({ logoWatermark: w })}
         />
       )}
     </div>
@@ -300,6 +304,9 @@ function DesignTab({
   onSetFontFamily,
   onSetBackgroundDesign,
   onSetBackgroundImage,
+  logos,
+  logoWatermark,
+  onSetLogoWatermark,
 }: {
   accentHex: string;
   surfaceHex: string;
@@ -311,6 +318,9 @@ function DesignTab({
   onSetFontFamily: (f: "sans" | "serif") => void;
   onSetBackgroundDesign: (d: BackgroundDesignKey) => void;
   onSetBackgroundImage: (dataUri: string | undefined) => void;
+  logos: BrandLogo[];
+  logoWatermark?: Presentation["logoWatermark"];
+  onSetLogoWatermark: (w: Presentation["logoWatermark"] | undefined) => void;
 }) {
   const bgInputRef = useRef<HTMLInputElement>(null);
 
@@ -422,6 +432,92 @@ function DesignTab({
         <p className="mt-1.5 text-[11px] text-ink-muted">
           JPG or PNG, 1920×1080 recommended
         </p>
+      </div>
+
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+          Logo watermark
+        </p>
+        {logos.length === 0 ? (
+          <p className="text-[13px] text-ink-muted">
+            <Link href="/logos" className="text-accent hover:text-accent-hover">
+              Upload a logo
+            </Link>{" "}
+            to add a watermark to every slide.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <Select
+              value={logoWatermark?.logoId ?? ""}
+              onChange={(e) => {
+                const logoId = e.target.value;
+                if (!logoId) return onSetLogoWatermark(undefined);
+                onSetLogoWatermark({
+                  logoId,
+                  position: logoWatermark?.position ?? "bottom-right",
+                  size: logoWatermark?.size ?? "small",
+                });
+              }}
+            >
+              <option value="">No watermark</option>
+              {logos.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </Select>
+
+            {logoWatermark && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      "top-left",
+                      "top-right",
+                      "bottom-left",
+                      "bottom-right",
+                    ] as const
+                  ).map((pos) => (
+                    <button
+                      key={pos}
+                      onClick={() => onSetLogoWatermark({ ...logoWatermark, position: pos })}
+                      className={cn(
+                        "rounded-lg border px-2 py-1.5 text-[12px] font-medium capitalize transition-colors",
+                        logoWatermark.position === pos
+                          ? "border-accent bg-accent-soft text-accent"
+                          : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                      )}
+                    >
+                      {pos.replace("-", " ")}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  {(["small", "medium"] as const).map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => onSetLogoWatermark({ ...logoWatermark, size: sz })}
+                      className={cn(
+                        "flex-1 rounded-lg border px-3 py-1.5 text-[12px] font-medium capitalize transition-colors",
+                        logoWatermark.size === sz
+                          ? "border-accent bg-accent-soft text-accent"
+                          : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                      )}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => onSetLogoWatermark(undefined)}
+                  className="text-[12px] font-medium text-ink-muted hover:text-red-600"
+                >
+                  Remove watermark
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

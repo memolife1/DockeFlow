@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type {
+  BrandLogo,
   ExportJob,
   Presentation,
   Slide,
@@ -52,6 +53,7 @@ interface Db {
   styleRefs: UploadedStyleReference[];
   exportJobs: ExportJob[];
   userImages: UserImage[];
+  brandLogos: BrandLogo[];
 }
 
 function emptyDb(): Db {
@@ -63,6 +65,7 @@ function emptyDb(): Db {
     styleRefs: [],
     exportJobs: [],
     userImages: [],
+    brandLogos: [],
   };
 }
 
@@ -131,6 +134,11 @@ interface StoreValue {
   addUserImage: (file: File) => Promise<UserImage>;
   removeUserImage: (id: string) => void;
   getUserImages: () => UserImage[];
+
+  // brand logos (watermarks)
+  addBrandLogo: (file: File) => Promise<BrandLogo>;
+  removeBrandLogo: (id: string) => void;
+  getBrandLogos: () => BrandLogo[];
 
   // presentations
   presentations: Presentation[];
@@ -419,6 +427,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [db.userImages, user],
   );
 
+  // ---- brand logos (watermarks) ----
+  const addBrandLogo = useCallback(
+    (file: File): Promise<BrandLogo> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const logo: BrandLogo = {
+            id: uid("logo"),
+            userId: user?.id ?? "anon",
+            name: file.name,
+            dataUri: reader.result as string,
+            uploadedAt: nowIso(),
+          };
+          commit((d) => ({ ...d, brandLogos: [...d.brandLogos, logo] }));
+          resolve(logo);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    },
+    [commit, user],
+  );
+
+  const removeBrandLogo = useCallback(
+    (id: string) => {
+      commit((d) => ({ ...d, brandLogos: d.brandLogos.filter((l) => l.id !== id) }));
+    },
+    [commit],
+  );
+
+  const getBrandLogos = useCallback(
+    () => db.brandLogos.filter((l) => !user || l.userId === user.id),
+    [db.brandLogos, user],
+  );
+
   // ---- presentations ----
   const presentations = useMemo(
     () =>
@@ -650,6 +693,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addUserImage,
     removeUserImage,
     getUserImages,
+    addBrandLogo,
+    removeBrandLogo,
+    getBrandLogos,
     presentations,
     getPresentation,
     createPresentation,

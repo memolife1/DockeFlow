@@ -34,7 +34,7 @@ export function ExportDialog({
   presentationId: string;
   title: string;
 }) {
-  const { createExportJob, getPresentation, slidesFor, templates } = useStore();
+  const { createExportJob, getPresentation, slidesFor, templates, getBrandLogos } = useStore();
   const [format, setFormat] = useState<ExportJob["format"]>("pptx");
   const [state, setState] = useState<"idle" | "processing" | "ready" | "error">(
     "idle",
@@ -73,10 +73,16 @@ export function ExportDialog({
         );
 
         // Builds a real .pptx (with native charts) and downloads it.
-        await exportDeckToPptx(pres, slides, template.theme, { imageData });
+        const logoDataUri = pres.logoWatermark
+          ? getBrandLogos().find((l) => l.id === pres.logoWatermark?.logoId)?.dataUri
+          : undefined;
+        await exportDeckToPptx(pres, slides, template.theme, { imageData, logoDataUri });
       } else if (format === "pdf") {
         const { exportDeckToPdf } = await import("@/lib/exportPdf");
-        await exportDeckToPdf(pres, slides, template.theme);
+        const logoDataUri = pres.logoWatermark
+          ? getBrandLogos().find((l) => l.id === pres.logoWatermark?.logoId)?.dataUri
+          : undefined;
+        await exportDeckToPdf(pres, slides, template.theme, logoDataUri);
       } else {
         const res = await fetch("/api/share", {
           method: "POST",

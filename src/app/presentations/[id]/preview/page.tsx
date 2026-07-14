@@ -20,7 +20,7 @@ export default function PreviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { ready, getPresentation, slidesFor, templates } = useStore();
+  const { ready, getPresentation, slidesFor, templates, getBrandLogos } = useStore();
   const presentation = getPresentation(id);
   const slides = slidesFor(id);
   const [i, setI] = useState(0);
@@ -33,6 +33,10 @@ export default function PreviewPage({
   const theme =
     (presentation && getTemplate(presentation.templateId, uploaded)?.theme) ??
     templates[0].theme;
+  const logoWatermark = presentation?.logoWatermark;
+  const logoDataUri = logoWatermark
+    ? getBrandLogos().find((l) => l.id === logoWatermark.logoId)?.dataUri
+    : undefined;
 
   const go = useCallback(
     (dir: number) =>
@@ -110,6 +114,8 @@ export default function PreviewPage({
               themeOverrides={presentation?.themeOverrides}
               index={i}
               total={slides.length}
+              logoWatermark={logoWatermark}
+              logoDataUri={logoDataUri}
             />
           </div>
 

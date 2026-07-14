@@ -18,7 +18,7 @@ import {
   IconCheck,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import type { PresentationMode, Slide, Tone } from "@/lib/types";
+import type { Presentation, PresentationMode, Slide, Tone } from "@/lib/types";
 
 const TONES: { value: Tone; label: string }[] = [
   { value: "professional", label: "Professional" },
@@ -47,8 +47,16 @@ const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
 
 export default function NewPresentationPage() {
   const router = useRouter();
-  const { ready, user, templates, createPresentation, setSlides, updatePresentation, getUserImages } =
-    useStore();
+  const {
+    ready,
+    user,
+    templates,
+    createPresentation,
+    setSlides,
+    updatePresentation,
+    getUserImages,
+    getBrandLogos,
+  } = useStore();
 
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<PresentationMode>("topic");
@@ -64,10 +72,12 @@ export default function NewPresentationPage() {
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [imageSource, setImageSource] = useState<"stock" | "mine" | "none">("stock");
+  const [logoWatermark, setLogoWatermark] = useState<Presentation["logoWatermark"]>(undefined);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
   const userImages = getUserImages();
+  const logos = getBrandLogos();
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -109,6 +119,7 @@ export default function NewPresentationPage() {
       tone: form.tone,
       templateId,
       useStockImages: imageSource === "stock",
+      logoWatermark,
       status: "generating",
     });
     try {
@@ -477,6 +488,78 @@ export default function NewPresentationPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Logo watermark (optional). */}
+              {logos.length > 0 && (
+                <div className="mt-8">
+                  <p className="mb-3 text-[13px] font-semibold text-ink-soft">
+                    Logo watermark
+                  </p>
+                  <Select
+                    value={logoWatermark?.logoId ?? ""}
+                    onChange={(e) => {
+                      const logoId = e.target.value;
+                      if (!logoId) return setLogoWatermark(undefined);
+                      setLogoWatermark({
+                        logoId,
+                        position: logoWatermark?.position ?? "bottom-right",
+                        size: logoWatermark?.size ?? "small",
+                      });
+                    }}
+                  >
+                    <option value="">No watermark</option>
+                    {logos.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </Select>
+                  {logoWatermark && (
+                    <div className="mt-3 space-y-3">
+                      <div className="grid grid-cols-4 gap-2">
+                        {(
+                          ["top-left", "top-right", "bottom-left", "bottom-right"] as const
+                        ).map((pos) => (
+                          <button
+                            key={pos}
+                            type="button"
+                            onClick={() =>
+                              setLogoWatermark((w) => (w ? { ...w, position: pos } : w))
+                            }
+                            className={cn(
+                              "rounded-lg border px-2 py-1.5 text-[11px] font-medium capitalize transition-colors",
+                              logoWatermark.position === pos
+                                ? "border-accent bg-accent-soft text-accent"
+                                : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                            )}
+                          >
+                            {pos.replace("-", " ")}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        {(["small", "medium"] as const).map((sz) => (
+                          <button
+                            key={sz}
+                            type="button"
+                            onClick={() =>
+                              setLogoWatermark((w) => (w ? { ...w, size: sz } : w))
+                            }
+                            className={cn(
+                              "flex-1 rounded-lg border px-3 py-1.5 text-[12px] font-medium capitalize transition-colors",
+                              logoWatermark.size === sz
+                                ? "border-accent bg-accent-soft text-accent"
+                                : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
+                            )}
+                          >
+                            {sz}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <p className="mt-4 text-sm text-red-600">{error}</p>
