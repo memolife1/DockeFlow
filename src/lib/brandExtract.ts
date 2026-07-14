@@ -25,6 +25,10 @@ export interface ExtractedBrand {
   fontBody?: string;
   logoDataUri?: string;
   logoMime?: string;
+  // Non-neutral colors actually used in the slide shapes, ranked by how often
+  // they appear — the theme's accent1 is just a generic palette slot and
+  // isn't necessarily the color the deck's author actually designed with.
+  slideColors: { hex: string; count: number }[];
 }
 
 function tag(xml: string, name: string): string | undefined {
@@ -51,6 +55,46 @@ function fontTag(xml: string, scheme: "majorFont" | "minorFont"): string | undef
 // obviously a full-bleed background photo (rough size gate applied by caller
 // via byte length; here we just filter by extension).
 const LOGO_EXT = /\.(png|jpe?g|gif|svg)$/i;
+
+// Returns true if a hex color is a neutral we should ignore when scanning for
+// the brand's real color (white, near-white, black, near-black, or gray).
+function isNeutral(hex: string): boolean {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  if (r > 220 && g > 220 && b > 220) return true; // near-white
+  if (r < 40 && g < 40 && b < 40) return true; // near-black
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const saturation = max === 0 ? 0 : (max - min) / max;
+  return saturation < 0.12; // low saturation = gray
+}
+
+// Scans ppt/slides/slide*.xml for srgbClr values and ranks the non-neutral
+// ones by occurrence — the most-used color across the actual slide shapes is
+// a far more reliable signal for "the brand color" than the theme's generic
+// accent1 palette slot, which many templates leave at a default and never
+// actually use in the deck.
+async function scanSlideColors(zip: JSZip): Promise<{ hex: string; count: number }[]> {
+  const slideFiles = Object.keys(zip.files).filter((name) =>
+    /^ppt\/slides\/slide\d+\.xml$/i.test(name),
+  );
+
+  const freq: Record<string, number> = {};
+  for (const path of slideFiles) {
+    const content = await zip.files[path].async("string");
+    const matches = content.matchAll(/srgbClr val="([0-9A-Fa-f]{6})"/gi);
+    for (const m of matches) {
+      const hex = m[1].toUpperCase();
+      if (isNeutral(hex)) continue;
+      freq[hex] = (freq[hex] ?? 0) + 1;
+    }
+  }
+
+  return Object.entries(freq)
+    .map(([hex, count]) => ({ hex, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
 export async function extractBrandFromPptx(
   buf: ArrayBuffer,
@@ -116,6 +160,8 @@ export async function extractBrandFromPptx(
   const niceName =
     themeName && !GENERIC_NAME.test(themeName.trim()) ? themeName.trim() : undefined;
 
+  const slideColors = await scanSlideColors(zip);
+
   return {
     name:
       niceName ||
@@ -126,5 +172,6 @@ export async function extractBrandFromPptx(
     fontBody,
     logoDataUri,
     logoMime,
+    slideColors,
   };
 }
