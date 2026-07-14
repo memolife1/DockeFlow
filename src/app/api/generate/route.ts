@@ -172,7 +172,8 @@ export async function POST(req: Request) {
     notes: body.notes ?? "",
     language: body.language,
     targetSlideCount: body.targetSlideCount,
-    userImageUris: body.userImageUris,
+    userImageUris: body.imageSource === "mine" ? body.userImageUris : undefined,
+    imageSource: body.imageSource,
   };
 
   const claudeDrafts = await generateWithClaude(input);

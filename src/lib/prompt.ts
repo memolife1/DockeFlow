@@ -108,8 +108,11 @@ export function buildUserMessage(input: GenerateInput): string {
     `Tone: ${input.tone}`,
     `Output language: ${input.language || "English"} — Write ALL slide titles, bullets, stats labels, speaker notes, and every other text field in ${input.language || "English"}. Match the professional register of that language. Do not translate the JSON keys — only the values.`,
     `Target slide count: ${input.targetSlideCount ?? 10} slides (you may add or remove 1 if the narrative demands it, but stay close).`,
-    input.userImageUris?.length
+    input.imageSource === "mine" && input.userImageUris?.length
       ? `User photos: The user has uploaded ${input.userImageUris.length} personal photo(s). For image-zone slides, prefer using these user photos instead of Pexels stock images. The photos will be injected after generation — simply pick the best-fitting layout (content_image_right, content_image_left) and use imageQuery: "USER_PHOTO" to signal this.`
+      : "",
+    input.imageSource === "none"
+      ? "Do NOT use any image-zone layouts (content_image_right, content_image_left, image_full_bleed, image_two_column, image_four_grid). Use only text layouts."
       : "",
     input.notes.trim() ? `\nSource notes / content:\n"""\n${input.notes.trim()}\n"""` : "\n(No notes provided — generate from the topic.)",
   ].filter(Boolean);

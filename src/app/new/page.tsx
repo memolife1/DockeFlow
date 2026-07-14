@@ -63,8 +63,7 @@ export default function NewPresentationPage() {
     targetSlideCount: 10,
   });
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
-  const [useStockImages, setUseStockImages] = useState(false);
-  const [useUserImages, setUseUserImages] = useState(true);
+  const [imageSource, setImageSource] = useState<"stock" | "mine" | "none">("stock");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
@@ -109,12 +108,12 @@ export default function NewPresentationPage() {
       goal: form.goal.trim(),
       tone: form.tone,
       templateId,
-      useStockImages,
+      useStockImages: imageSource === "stock",
       status: "generating",
     });
     try {
       const userImageUris =
-        useUserImages && userImages.length
+        imageSource === "mine" && userImages.length
           ? userImages.map((i) => i.dataUri || i.fileUrl).filter(Boolean)
           : undefined;
       const res = await fetch("/api/generate", {
@@ -123,7 +122,8 @@ export default function NewPresentationPage() {
         body: JSON.stringify({
           presentationId: pres.id,
           mode,
-          useStockImages,
+          imageSource,
+          useStockImages: imageSource === "stock" ? true : undefined,
           userImageUris,
           ...form,
         }),
@@ -391,66 +391,61 @@ export default function NewPresentationPage() {
                 </div>
               </div>
 
-              {/* Stock photography toggle (affects the exported title slide). */}
-              <div className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-line bg-paper p-4">
-                <div>
-                  <p className="text-sm font-medium text-ink">
-                    Include stock photography
-                  </p>
-                  <p className="mt-0.5 text-[13px] text-ink-muted">
-                    Adds a relevant background photo to your title slide.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={useStockImages}
-                  onClick={() => setUseStockImages((v) => !v)}
-                  className={cn(
-                    "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                    useStockImages ? "bg-accent" : "bg-line-strong",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all",
-                      useStockImages ? "left-[22px]" : "left-0.5",
-                    )}
-                  />
-                </button>
-              </div>
-
-              {/* Use the user's own photo library instead of stock images. */}
-              {userImages.length > 0 && (
-                <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-line bg-paper p-4">
-                  <div>
-                    <p className="text-sm font-medium text-ink">
-                      Use my photos in slides
-                    </p>
-                    <p className="mt-0.5 text-[13px] text-ink-muted">
-                      Prefer your {userImages.length} uploaded photo
-                      {userImages.length === 1 ? "" : "s"} over stock images.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={useUserImages}
-                    onClick={() => setUseUserImages((v) => !v)}
-                    className={cn(
-                      "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                      useUserImages ? "bg-accent" : "bg-line-strong",
-                    )}
-                  >
-                    <span
+              {/* Image source for image-zone slides. */}
+              <div className="mt-8">
+                <p className="mb-3 text-[13px] font-semibold text-ink-soft">
+                  Images
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {(
+                    [
+                      {
+                        id: "stock" as const,
+                        icon: "📷",
+                        title: "Stock photos",
+                        body: "Pexels",
+                      },
+                      {
+                        id: "mine" as const,
+                        icon: "🖼️",
+                        title: "My photos",
+                        body: "Your library",
+                      },
+                      {
+                        id: "none" as const,
+                        icon: "✕",
+                        title: "No images",
+                        body: "Text layouts only",
+                      },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setImageSource(opt.id)}
                       className={cn(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-card transition-all",
-                        useUserImages ? "left-[22px]" : "left-0.5",
+                        "flex flex-col items-start rounded-xl border bg-paper p-4 text-left transition-all",
+                        imageSource === opt.id
+                          ? "border-accent ring-2 ring-accent-ring"
+                          : "border-line hover:border-line-strong hover:shadow-card",
                       )}
-                    />
-                  </button>
+                    >
+                      <span className="text-lg">{opt.icon}</span>
+                      <p className="mt-2 text-sm font-medium text-ink">{opt.title}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-muted">{opt.body}</p>
+                    </button>
+                  ))}
                 </div>
-              )}
+                {imageSource === "mine" && userImages.length === 0 && (
+                  <p className="mt-3 text-[13px] text-amber-600">
+                    You haven&apos;t uploaded any photos yet.{" "}
+                    <Link href="/images" className="underline hover:text-amber-700">
+                      Upload some
+                    </Link>{" "}
+                    or pick a different image source.
+                  </p>
+                )}
+              </div>
 
               {/* Slide count (drives the deck's target length). */}
               <div className="mt-8">
