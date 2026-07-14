@@ -152,6 +152,19 @@ export interface Presentation {
   updatedAt: string;
 }
 
+// Per-slide design overrides, independent of the presentation-wide
+// themeOverrides — set from the Inspector Design tab's "This slide" scope.
+export interface SlideDesign {
+  backgroundColor?: string; // hex, no "#"
+  headlineColor?: string; // hex, no "#" — overrides title/heading text
+  bodyColor?: string; // hex, no "#" — overrides bullets/body text
+  accentColor?: string; // hex, no "#" — overrides accent shapes/icons
+  backgroundDesign?: string; // BackgroundDesignKey from lib/backgroundDesigns
+  backgroundImageUri?: string; // base64 data URI
+  headingFont?: "sans" | "serif";
+  bodyFont?: "sans" | "serif";
+}
+
 export interface Slide {
   id: string;
   presentationId: string;
@@ -160,6 +173,7 @@ export interface Slide {
   content: string[]; // bullet points / body lines
   speakerNotes: string;
   layoutType: LayoutType;
+  slideDesign?: SlideDesign;
   chart?: ChartSpec; // present on data-oriented slides
   stats?: Stat[]; // present on stat-block slides
   columns?: SlideColumn[]; // present on two-column comparison slides

@@ -45,6 +45,12 @@ export interface ThemeSpec {
   // Per-presentation design overrides (editor Design tab).
   backgroundDesign?: BackgroundDesignKey;
   backgroundImageUri?: string;
+  // Per-slide overrides (Inspector Design tab, "This slide" scope) — applied
+  // on top of the presentation-wide spec at render time, independent of the
+  // ColorRole palette since they target specific text roles (title vs body)
+  // rather than a reusable color role.
+  headlineOverride?: string; // hex, no "#"
+  bodyOverride?: string; // hex, no "#"
 }
 
 interface BaseEl {

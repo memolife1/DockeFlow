@@ -1,6 +1,6 @@
 import pptxgen from "pptxgenjs";
 import type { Presentation, Slide, TemplateTheme } from "./types";
-import { buildThemeSpec } from "./layouts/theme";
+import { buildThemeSpec, applySlideDesign } from "./layouts/theme";
 import { resolveSlide } from "./layouts/specs";
 import {
   CANVAS_H,
@@ -56,7 +56,7 @@ export async function exportDeckToPptx(
   theme: TemplateTheme,
   options: ExportOptions = {},
 ): Promise<void> {
-  const spec = buildThemeSpec(theme, presentation.themeOverrides);
+  const baseSpec = buildThemeSpec(theme, presentation.themeOverrides);
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE"; // 13.33 x 7.5 — set before adding slides
   pptx.author = "DeckeFlow";
@@ -65,9 +65,11 @@ export async function exportDeckToPptx(
   const ordered = [...slides].sort((a, b) => a.orderIndex - b.orderIndex);
   const total = ordered.length;
 
-  // Pre-rasterize any icons used (semantic name + color role pairs).
+  // Pre-rasterize any icons used (semantic name + color role pairs), across
+  // every slide's effective (base + per-slide override) spec.
   const iconCache = new Map<string, string>();
   for (const slide of ordered) {
+    const spec = applySlideDesign(baseSpec, slide.slideDesign);
     const resolved = resolveSlide(slide, {
       index: slide.orderIndex,
       total,
@@ -90,6 +92,7 @@ export async function exportDeckToPptx(
   }
 
   ordered.forEach((slide) => {
+    const spec = applySlideDesign(baseSpec, slide.slideDesign);
     const resolved = resolveSlide(slide, {
       index: slide.orderIndex,
       total,
@@ -147,6 +150,12 @@ function renderEl(
 }
 
 function renderText(s: pptxgen.Slide, el: TextEl, spec: ThemeSpec) {
+  const resolvedColor =
+    el.font === "head" && spec.headlineOverride
+      ? spec.headlineOverride
+      : el.color === "textBody" && spec.bodyOverride
+      ? spec.bodyOverride
+      : spec.colors[el.color];
   // Fresh options object per call — pptxgenjs mutates them.
   s.addText(el.text, {
     x: el.x,
@@ -158,7 +167,7 @@ function renderText(s: pptxgen.Slide, el: TextEl, spec: ThemeSpec) {
     fontSize: el.size,
     bold: el.bold,
     italic: el.italic,
-    color: spec.colors[el.color],
+    color: resolvedColor,
     align: el.align ?? "left",
     valign: el.valign ?? "top",
     lineSpacingMultiple: el.lineSpacing,

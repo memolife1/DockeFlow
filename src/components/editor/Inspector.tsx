@@ -2,7 +2,14 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import type { BrandLogo, LayoutType, Presentation, Slide, TemplateTheme } from "@/lib/types";
+import type {
+  BrandLogo,
+  LayoutType,
+  Presentation,
+  Slide,
+  SlideDesign,
+  TemplateTheme,
+} from "@/lib/types";
 import { Field, Input, Textarea, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { IconPlus, IconTrash, IconCopy, IconUpload, IconX } from "@/components/ui/icons";
@@ -72,6 +79,7 @@ export function Inspector({
   const { getUserImages, getBrandLogos } = useStore();
   const logos = getBrandLogos();
   const [tab, setTab] = useState<"content" | "design">("content");
+  const [designScope, setDesignScope] = useState<"slide" | "all">("slide");
   const layoutId = resolveLayoutId(slide);
   const userImages = IMAGE_LAYOUTS.has(layoutId) ? getUserImages() : [];
 
@@ -88,12 +96,52 @@ export function Inspector({
   const setOverride = (patch: Partial<NonNullable<Presentation["themeOverrides"]>>) =>
     onUpdatePresentation({ themeOverrides: { ...overrides, ...patch } });
 
-  const accentHex = overrides?.accent ?? stripHash(theme.accent);
-  const surfaceHex = overrides?.surface ?? stripHash(theme.surface);
-  const inkHex = overrides?.ink ?? stripHash(theme.ink);
-  const fontFamily = overrides?.fontFamily ?? theme.fontFamily;
+  const sd = slide.slideDesign;
+
+  // Effective current values shown in the pickers — slide override wins,
+  // then the presentation-wide override, then the template default.
+  const accentHex = sd?.accentColor ?? overrides?.accent ?? stripHash(theme.accent);
+  const surfaceHex = sd?.backgroundColor ?? overrides?.surface ?? stripHash(theme.surface);
+  const inkHex = sd?.bodyColor ?? overrides?.ink ?? stripHash(theme.ink);
+  const headlineHex = sd?.headlineColor ?? inkHex;
+  const fontFamily = sd?.headingFont ?? overrides?.fontFamily ?? theme.fontFamily;
+  const bodyFontFamily = sd?.bodyFont ?? overrides?.bodyFontFamily ?? "sans";
   const backgroundDesign: BackgroundDesignKey =
-    (overrides?.backgroundDesign as BackgroundDesignKey) ?? "none";
+    ((sd?.backgroundDesign ?? overrides?.backgroundDesign) as BackgroundDesignKey) ?? "none";
+  const backgroundImageUri = sd?.backgroundImageUri ?? overrides?.backgroundImageUri;
+
+  // Applies a design patch respecting the scope toggle: "This slide" writes
+  // only slide.slideDesign; "All slides" writes the mapped keys to the
+  // presentation-wide themeOverrides too (and still mirrors onto the current
+  // slide's slideDesign so the change is visible immediately without
+  // re-deriving effective values from two sources).
+  const applyDesign = (patch: Partial<SlideDesign>) => {
+    if (designScope === "all") {
+      const themeMap: Partial<Record<keyof SlideDesign, string>> = {
+        accentColor: "accent",
+        backgroundColor: "surface",
+        bodyColor: "ink",
+        backgroundDesign: "backgroundDesign",
+        backgroundImageUri: "backgroundImageUri",
+        headingFont: "fontFamily",
+        bodyFont: "bodyFontFamily",
+      };
+      const themePatch: Record<string, string | undefined> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        const mapped = themeMap[k as keyof SlideDesign];
+        if (mapped) themePatch[mapped] = v as string | undefined;
+      }
+      if (Object.keys(themePatch).length) setOverride(themePatch);
+    }
+    onChange({ slideDesign: { ...sd, ...patch } });
+  };
+
+  const resetDesign = () => {
+    if (designScope === "all") {
+      onUpdatePresentation({ themeOverrides: {} });
+    }
+    onChange({ slideDesign: undefined });
+  };
 
   return (
     <div className="thin-scroll flex h-full flex-col overflow-y-auto border-l border-line bg-paper">
@@ -256,21 +304,22 @@ export function Inspector({
         </>
       ) : (
         <DesignTab
+          designScope={designScope}
+          onSetDesignScope={setDesignScope}
           accentHex={accentHex}
           surfaceHex={surfaceHex}
           inkHex={inkHex}
+          headlineHex={headlineHex}
           fontFamily={fontFamily}
-          bodyFontFamily={overrides?.bodyFontFamily ?? "sans"}
+          bodyFontFamily={bodyFontFamily}
           backgroundDesign={backgroundDesign}
-          backgroundImageUri={overrides?.backgroundImageUri}
-          onSetColor={(key, hex) => setOverride({ [key]: stripHash(hex) })}
-          onSetFontFamily={(f) => setOverride({ fontFamily: f })}
-          onSetBodyFontFamily={(f) => setOverride({ bodyFontFamily: f })}
-          onResetColors={() =>
-            setOverride({ accent: undefined, surface: undefined, ink: undefined })
-          }
-          onSetBackgroundDesign={(d) => setOverride({ backgroundDesign: d })}
-          onSetBackgroundImage={(dataUri) => setOverride({ backgroundImageUri: dataUri })}
+          backgroundImageUri={backgroundImageUri}
+          onSetColor={(key, hex) => applyDesign({ [key]: stripHash(hex) })}
+          onSetFontFamily={(f) => applyDesign({ headingFont: f })}
+          onSetBodyFontFamily={(f) => applyDesign({ bodyFont: f })}
+          onResetColors={resetDesign}
+          onSetBackgroundDesign={(d) => applyDesign({ backgroundDesign: d })}
+          onSetBackgroundImage={(dataUri) => applyDesign({ backgroundImageUri: dataUri })}
           logos={logos}
           logoWatermark={presentation.logoWatermark}
           onSetLogoWatermark={(w) => onUpdatePresentation({ logoWatermark: w })}
@@ -310,9 +359,12 @@ function ColorPicker({
 }
 
 function DesignTab({
+  designScope,
+  onSetDesignScope,
   accentHex,
   surfaceHex,
   inkHex,
+  headlineHex,
   fontFamily,
   bodyFontFamily,
   backgroundDesign,
@@ -327,14 +379,17 @@ function DesignTab({
   logoWatermark,
   onSetLogoWatermark,
 }: {
+  designScope: "slide" | "all";
+  onSetDesignScope: (s: "slide" | "all") => void;
   accentHex: string;
   surfaceHex: string;
   inkHex: string;
+  headlineHex: string;
   fontFamily: "sans" | "serif";
   bodyFontFamily: "sans" | "serif";
   backgroundDesign: BackgroundDesignKey;
   backgroundImageUri?: string;
-  onSetColor: (key: "accent" | "surface" | "ink", hex: string) => void;
+  onSetColor: (key: keyof SlideDesign, hex: string) => void;
   onSetFontFamily: (f: "sans" | "serif") => void;
   onSetBodyFontFamily: (f: "sans" | "serif") => void;
   onResetColors: () => void;
@@ -354,20 +409,62 @@ function DesignTab({
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-5">
+      <div className="flex overflow-hidden rounded-lg border border-line">
+        <button
+          className={cn(
+            "flex-1 py-1.5 text-[12px] font-medium transition-colors",
+            designScope === "slide"
+              ? "bg-accent text-white"
+              : "bg-paper text-ink-muted hover:text-ink",
+          )}
+          onClick={() => onSetDesignScope("slide")}
+        >
+          This slide
+        </button>
+        <button
+          className={cn(
+            "flex-1 py-1.5 text-[12px] font-medium transition-colors",
+            designScope === "all"
+              ? "bg-accent text-white"
+              : "bg-paper text-ink-muted hover:text-ink",
+          )}
+          onClick={() => onSetDesignScope("all")}
+        >
+          All slides
+        </button>
+      </div>
+
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
           Colors
         </p>
         <div className="space-y-3">
-          <ColorPicker label="Accent color" hex={accentHex} onChange={(h) => onSetColor("accent", h)} />
-          <ColorPicker label="Background" hex={surfaceHex} onChange={(h) => onSetColor("surface", h)} />
-          <ColorPicker label="Text color" hex={inkHex} onChange={(h) => onSetColor("ink", h)} />
+          <ColorPicker
+            label="Headline"
+            hex={headlineHex}
+            onChange={(h) => onSetColor("headlineColor", h)}
+          />
+          <ColorPicker
+            label="Body text"
+            hex={inkHex}
+            onChange={(h) => onSetColor("bodyColor", h)}
+          />
+          <ColorPicker
+            label="Accent"
+            hex={accentHex}
+            onChange={(h) => onSetColor("accentColor", h)}
+          />
+          <ColorPicker
+            label="Background"
+            hex={surfaceHex}
+            onChange={(h) => onSetColor("backgroundColor", h)}
+          />
         </div>
         <button
           onClick={onResetColors}
           className="mt-3 text-[12px] font-medium text-ink-muted hover:text-accent"
         >
-          Reset colors to template defaults
+          Reset to defaults
         </button>
       </div>
 

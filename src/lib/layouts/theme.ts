@@ -1,4 +1,4 @@
-import type { Presentation, TemplateTheme } from "../types";
+import type { Presentation, Slide, TemplateTheme } from "../types";
 import { isBackgroundDesignKey } from "../backgroundDesigns";
 import type { ColorRole, ThemeSpec } from "./types";
 
@@ -149,4 +149,45 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
         : undefined,
     backgroundImageUri: overrides?.backgroundImageUri,
   };
+}
+
+// Applies a slide's per-slide design overrides on top of a resolved
+// ThemeSpec. Independent of themeOverrides — this is the "This slide" scope
+// in the Inspector's Design tab, layered on top of "All slides". Shared by
+// the HTML preview (SlideView) and the PPTX export so both stay in sync.
+export function applySlideDesign(spec: ThemeSpec, sd: Slide["slideDesign"]): ThemeSpec {
+  if (!sd) return spec;
+  const next: ThemeSpec = { ...spec, colors: { ...spec.colors } };
+
+  if (sd.backgroundColor) next.colors.surface = normHex(sd.backgroundColor, next.colors.surface);
+  if (sd.headlineColor) next.headlineOverride = normHex(sd.headlineColor, "");
+  if (sd.bodyColor) next.bodyOverride = normHex(sd.bodyColor, "");
+  if (sd.accentColor) {
+    const a = normHex(sd.accentColor, next.colors.primary);
+    next.colors.primary = a;
+    next.colors.accent = a;
+  }
+  if (
+    sd.backgroundDesign &&
+    isBackgroundDesignKey(sd.backgroundDesign) &&
+    sd.backgroundDesign !== "none"
+  ) {
+    next.backgroundDesign = sd.backgroundDesign;
+  }
+  if (sd.backgroundImageUri) next.backgroundImageUri = sd.backgroundImageUri;
+  if (sd.headingFont) {
+    next.fontHead = sd.headingFont === "serif" ? "Georgia" : "Plus Jakarta Sans";
+    next.fontHeadCss =
+      sd.headingFont === "serif"
+        ? '"Iowan Old Style", Palatino, Georgia, serif'
+        : `"${next.fontHead}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+  }
+  if (sd.bodyFont) {
+    next.fontBody = sd.bodyFont === "serif" ? "Georgia" : "Plus Jakarta Sans";
+    next.fontBodyCss =
+      sd.bodyFont === "serif"
+        ? '"Iowan Old Style", Palatino, Georgia, serif'
+        : `"${next.fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+  }
+  return next;
 }

@@ -1,6 +1,9 @@
+"use client";
+
+import { useMemo } from "react";
 import type { Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { buildThemeSpec } from "@/lib/layouts/theme";
+import { buildThemeSpec, applySlideDesign } from "@/lib/layouts/theme";
 import { resolveSlide } from "@/lib/layouts/specs";
 import {
   CANVAS_H,
@@ -46,7 +49,12 @@ export function SlideView({
   logoWatermark?: Presentation["logoWatermark"];
   logoDataUri?: string;
 }) {
-  const spec = buildThemeSpec(theme, themeOverrides);
+  const baseSpec = buildThemeSpec(theme, themeOverrides);
+  const spec = useMemo(
+    () => applySlideDesign(baseSpec, slide.slideDesign),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseSpec, slide.slideDesign],
+  );
   const resolved = resolveSlide(slide, {
     index: index ?? slide.orderIndex ?? 0,
     total: total ?? 1,
@@ -167,6 +175,12 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
     const isArabic = ARABIC_RE.test(el.text);
     const textAlign =
       isArabic && (!el.align || el.align === "left") ? "right" : el.align ?? "left";
+    const resolvedColor =
+      el.font === "head" && spec.headlineOverride
+        ? spec.headlineOverride
+        : el.color === "textBody" && spec.bodyOverride
+        ? spec.bodyOverride
+        : spec.colors[el.color];
     return (
       <div
         style={{
@@ -176,7 +190,7 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
           justifyContent: justify,
           textAlign,
           direction: isArabic ? "rtl" : undefined,
-          color: `#${spec.colors[el.color]}`,
+          color: `#${resolvedColor}`,
           fontSize: `${el.size * PT}cqw`,
           fontWeight: el.bold ? 700 : 400,
           fontStyle: el.italic ? "italic" : undefined,
