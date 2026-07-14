@@ -101,7 +101,7 @@ RULES — follow every one:
 
 6. SPEAKER NOTES = THE "SO WHAT". Every slide gets speakerNotes telling the presenter what to emphasize OUT LOUD that is not written on the slide — the interpretation, the risk, the number to land on, the transition to the next slide. Not a re-read of the bullets.
 
-7. Return the number of slides specified in the user message (typically 8–14). Output strict JSON only.`;
+7. Return EXACTLY the number of slides specified in the user message (targetSlideCount). For counts above 14, extend the narrative with additional evidence slides, case study examples, or implementation detail slides. For counts below 8, be ruthlessly concise — every slide must earn its place. Output strict JSON only.`;
 
 export function buildUserMessage(input: GenerateInput): string {
   const lines = [
@@ -112,7 +112,7 @@ export function buildUserMessage(input: GenerateInput): string {
     `Objective: ${input.goal || "(unspecified)"}`,
     `Tone: ${input.tone}`,
     `Output language: ${input.language || "English"} — Write ALL slide titles, bullets, stats labels, speaker notes, and every other text field in ${input.language || "English"}. Match the professional register of that language. Do not translate the JSON keys — only the values.`,
-    `Target slide count: ${input.targetSlideCount ?? 10} slides (you may add or remove 1 if the narrative demands it, but stay close).`,
+    `Target slide count: exactly ${input.targetSlideCount ?? 10} slides.`,
     input.imageSource === "mine" && input.userImageUris?.length
       ? `User photos: The user has uploaded ${input.userImageUris.length} personal photo(s). For image-zone slides, prefer using these user photos instead of Pexels stock images. The photos will be injected after generation — simply pick the best-fitting layout (content_image_right, content_image_left) and use imageQuery: "USER_PHOTO" to signal this.`
       : "",

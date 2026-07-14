@@ -36,11 +36,14 @@ const LANGUAGES = [
   { value: "Russian", label: "Русский" },
 ];
 
-const SLIDE_COUNTS: { value: number; label: string }[] = [
-  { value: 8, label: "Concise" },
-  { value: 10, label: "Standard" },
-  { value: 12, label: "Detailed" },
-  { value: 14, label: "Comprehensive" },
+const SLIDE_COUNTS: { value: number; label: string; sub: string }[] = [
+  { value: 4, label: "4 slides", sub: "Quick pitch" },
+  { value: 6, label: "6 slides", sub: "Brief" },
+  { value: 8, label: "8 slides", sub: "Concise" },
+  { value: 10, label: "10 slides", sub: "Standard" },
+  { value: 12, label: "12 slides", sub: "Detailed" },
+  { value: 14, label: "14 slides", sub: "Comprehensive" },
+  { value: -1, label: "Custom", sub: "4–30 slides" },
 ];
 
 const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
@@ -73,6 +76,7 @@ export default function NewPresentationPage() {
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [imageSource, setImageSource] = useState<"stock" | "mine" | "none">("stock");
   const [logoWatermark, setLogoWatermark] = useState<Presentation["logoWatermark"]>(undefined);
+  const [customSlideCount, setCustomSlideCount] = useState(16);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
 
@@ -106,6 +110,9 @@ export default function NewPresentationPage() {
       ? !!templateId
       : true;
 
+  const effectiveSlideCount =
+    form.targetSlideCount === -1 ? customSlideCount : form.targetSlideCount;
+
   const generate = async () => {
     setError("");
     setGenerating(true);
@@ -137,6 +144,7 @@ export default function NewPresentationPage() {
           useStockImages: imageSource === "stock" ? true : undefined,
           userImageUris,
           ...form,
+          targetSlideCount: effectiveSlideCount,
         }),
       });
       if (!res.ok) throw new Error("Generation failed");
@@ -478,15 +486,29 @@ export default function NewPresentationPage() {
                           : "border-line hover:border-line-strong hover:shadow-card",
                       )}
                     >
-                      <p className="text-lg font-semibold text-ink">
-                        {sc.value} slides
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-ink-muted">
-                        {sc.label}
-                      </p>
+                      <p className="text-lg font-semibold text-ink">{sc.label}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-muted">{sc.sub}</p>
                     </button>
                   ))}
                 </div>
+                {form.targetSlideCount === -1 && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <Input
+                      type="number"
+                      min={4}
+                      max={30}
+                      value={customSlideCount}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        setCustomSlideCount(
+                          Number.isFinite(n) ? Math.min(30, Math.max(4, n)) : 4,
+                        );
+                      }}
+                      className="w-24"
+                    />
+                    <span className="text-[13px] text-ink-muted">slides (4–30)</span>
+                  </div>
+                )}
               </div>
 
               {/* Logo watermark (optional). */}

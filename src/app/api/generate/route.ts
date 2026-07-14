@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   buildDeckDrafts,
   draftsToSlides,
+  padOrTrimToTarget,
   type DraftSlide,
   type GenerateInput,
 } from "@/lib/generate";
@@ -192,6 +193,7 @@ export async function POST(req: Request) {
   }
 
   drafts = ensureRequiredLayouts(drafts);
+  if (input.targetSlideCount) drafts = padOrTrimToTarget(drafts, input.targetSlideCount);
   resolveUserImages(drafts, input.userImageUris);
   if (body.useStockImages) await resolveImages(drafts);
 

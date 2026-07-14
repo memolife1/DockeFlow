@@ -578,13 +578,48 @@ export function buildDeckDrafts(input: GenerateInput): DraftSlide[] {
   return drafts;
 }
 
+// Adjusts a deck's draft list to match the user's requested slide count
+// (4-30, via the wizard's custom option). Trims from the middle (keeping the
+// opening and closing slides) or pads with generic evidence slides just
+// before the close. Called last (after any safety-net layout insertions) so
+// the final slide count is always exact.
+export function padOrTrimToTarget(drafts: DraftSlide[], target: number): DraftSlide[] {
+  const clamped = Math.max(4, Math.min(30, Math.round(target)));
+  if (drafts.length === clamped) return drafts;
+
+  if (drafts.length > clamped) {
+    const out = [...drafts];
+    while (out.length > clamped) {
+      out.splice(Math.max(1, Math.floor(out.length / 2)), 1);
+    }
+    return out;
+  }
+
+  const out = [...drafts];
+  const insertBase = Math.max(1, out.length - 1);
+  let n = 1;
+  while (out.length < clamped) {
+    out.splice(insertBase + n - 1, 0, {
+      title: `Additional evidence ${n}: a closer look at the case`,
+      content: [
+        "A concrete example that reinforces the recommendation",
+        "Detail worth walking through if the room wants more depth",
+      ],
+      speakerNotes: "Use this slide only if the discussion calls for another layer of detail.",
+      layoutType: "content_bullets",
+    });
+    n++;
+  }
+  return out;
+}
+
 // ---- Draft -> Slide mapping (shared by fallback and LLM path) ---------------
 
 export function draftsToSlides(
   presentationId: string,
   drafts: DraftSlide[],
 ): Slide[] {
-  return drafts.slice(0, 14).map((d, i) => ({
+  return drafts.slice(0, 30).map((d, i) => ({
     id: uid("slide"),
     presentationId,
     orderIndex: i,
