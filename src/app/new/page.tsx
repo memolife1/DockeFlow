@@ -512,11 +512,34 @@ export default function NewPresentationPage() {
               </div>
 
               {/* Logo watermark (optional). */}
-              {logos.length > 0 && (
+              {logos.length === 0 ? (
                 <div className="mt-8">
                   <p className="mb-3 text-[13px] font-semibold text-ink-soft">
                     Logo watermark
                   </p>
+                  <p className="text-[13px] text-ink-muted">
+                    No logos yet.{" "}
+                    <Link
+                      href="/logos?returnTo=/new"
+                      className="text-accent hover:text-accent-hover"
+                    >
+                      Upload logo →
+                    </Link>
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-8">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[13px] font-semibold text-ink-soft">
+                      Logo watermark
+                    </p>
+                    <Link
+                      href="/logos?returnTo=/new"
+                      className="text-[12px] font-medium text-accent hover:text-accent-hover"
+                    >
+                      + Add another logo
+                    </Link>
+                  </div>
                   <Select
                     value={logoWatermark?.logoId ?? ""}
                     onChange={(e) => {

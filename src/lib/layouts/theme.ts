@@ -148,6 +148,7 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
         ? overrides.backgroundDesign
         : undefined,
     backgroundImageUri: overrides?.backgroundImageUri,
+    decorationStyle: overrides?.decorationStyle,
   };
 }
 
@@ -189,5 +190,6 @@ export function applySlideDesign(spec: ThemeSpec, sd: Slide["slideDesign"]): The
         ? '"Iowan Old Style", Palatino, Georgia, serif'
         : `"${next.fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
   }
+  if (sd.decorationStyle) next.decorationStyle = sd.decorationStyle;
   return next;
 }

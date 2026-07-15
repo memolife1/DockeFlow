@@ -109,6 +109,7 @@ export function Inspector({
   const backgroundDesign: BackgroundDesignKey =
     ((sd?.backgroundDesign ?? overrides?.backgroundDesign) as BackgroundDesignKey) ?? "none";
   const backgroundImageUri = sd?.backgroundImageUri ?? overrides?.backgroundImageUri;
+  const decorationStyle = sd?.decorationStyle ?? overrides?.decorationStyle ?? "bubbles";
 
   // Applies a design patch respecting the scope toggle: "This slide" writes
   // only slide.slideDesign; "All slides" writes the mapped keys to the
@@ -190,6 +191,70 @@ export function Inspector({
                 onChange={(e) => onChange({ title: e.target.value })}
               />
             </Field>
+
+            {layoutId === "stat_kpi" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">
+                    Stats
+                  </span>
+                  <button
+                    onClick={() => {
+                      if ((slide.stats ?? []).length >= 4) return;
+                      const stats = [...(slide.stats ?? []), { value: "0%", label: "New stat" }];
+                      onChange({ stats });
+                    }}
+                    className="flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-hover"
+                  >
+                    <IconPlus className="h-3 w-3" /> Add
+                  </button>
+                </div>
+                {(slide.stats ?? []).map((stat, i) => (
+                  <div key={i} className="space-y-2 rounded-lg border border-line bg-paper-soft p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-ink-muted">STAT {i + 1}</span>
+                      <button
+                        onClick={() => {
+                          const stats = (slide.stats ?? []).filter((_, idx) => idx !== i);
+                          onChange({ stats });
+                        }}
+                        className="text-ink-faint hover:text-red-500"
+                        aria-label={`Remove stat ${i + 1}`}
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <Field label="Value">
+                      <Input
+                        value={stat.value}
+                        placeholder="e.g. 47%, $2.4M, 3x"
+                        onChange={(e) => {
+                          const stats = (slide.stats ?? []).map((st, idx) =>
+                            idx === i ? { ...st, value: e.target.value } : st,
+                          );
+                          onChange({ stats });
+                        }}
+                      />
+                    </Field>
+                    <Field label="Label">
+                      <Input
+                        value={stat.label}
+                        placeholder="e.g. revenue growth in Q3"
+                        onChange={(e) => {
+                          const stats = (slide.stats ?? []).map((st, idx) =>
+                            idx === i ? { ...st, label: e.target.value } : st,
+                          );
+                          onChange({ stats });
+                        }}
+                      />
+                    </Field>
+                  </div>
+                ))}
+                {(!slide.stats || slide.stats.length === 0) && (
+                  <p className="text-[12px] italic text-ink-faint">No stats yet. Click + Add to add one.</p>
+                )}
+              </div>
+            )}
 
             <div>
               <div className="mb-1.5 flex items-center justify-between">
@@ -306,6 +371,7 @@ export function Inspector({
         <DesignTab
           designScope={designScope}
           onSetDesignScope={setDesignScope}
+          layoutId={layoutId}
           accentHex={accentHex}
           surfaceHex={surfaceHex}
           inkHex={inkHex}
@@ -314,12 +380,14 @@ export function Inspector({
           bodyFontFamily={bodyFontFamily}
           backgroundDesign={backgroundDesign}
           backgroundImageUri={backgroundImageUri}
+          decorationStyle={decorationStyle}
           onSetColor={(key, hex) => applyDesign({ [key]: stripHash(hex) })}
           onSetFontFamily={(f) => applyDesign({ headingFont: f })}
           onSetBodyFontFamily={(f) => applyDesign({ bodyFont: f })}
           onResetColors={resetDesign}
           onSetBackgroundDesign={(d) => applyDesign({ backgroundDesign: d })}
           onSetBackgroundImage={(dataUri) => applyDesign({ backgroundImageUri: dataUri })}
+          onSetDecorationStyle={(d) => applyDesign({ decorationStyle: d })}
           logos={logos}
           logoWatermark={presentation.logoWatermark}
           onSetLogoWatermark={(w) => onUpdatePresentation({ logoWatermark: w })}
@@ -358,9 +426,24 @@ function ColorPicker({
   );
 }
 
+const DECORATION_STYLES: { key: NonNullable<SlideDesign["decorationStyle"]>; label: string }[] = [
+  { key: "bubbles", label: "Bubbles" },
+  { key: "geometric", label: "Geometric" },
+  { key: "lines", label: "Lines" },
+  { key: "corners", label: "Corners" },
+  { key: "minimal", label: "Minimal" },
+  { key: "none", label: "None" },
+];
+
+// Layouts whose specs.ts function actually renders decorationEls() — showing
+// this picker elsewhere would be a dead control (e.g. content_bullets has no
+// decorative shapes to swap).
+const DECORATION_LAYOUTS = new Set(["title_hero"]);
+
 function DesignTab({
   designScope,
   onSetDesignScope,
+  layoutId,
   accentHex,
   surfaceHex,
   inkHex,
@@ -369,18 +452,21 @@ function DesignTab({
   bodyFontFamily,
   backgroundDesign,
   backgroundImageUri,
+  decorationStyle,
   onSetColor,
   onSetFontFamily,
   onSetBodyFontFamily,
   onResetColors,
   onSetBackgroundDesign,
   onSetBackgroundImage,
+  onSetDecorationStyle,
   logos,
   logoWatermark,
   onSetLogoWatermark,
 }: {
   designScope: "slide" | "all";
   onSetDesignScope: (s: "slide" | "all") => void;
+  layoutId: string;
   accentHex: string;
   surfaceHex: string;
   inkHex: string;
@@ -389,12 +475,14 @@ function DesignTab({
   bodyFontFamily: "sans" | "serif";
   backgroundDesign: BackgroundDesignKey;
   backgroundImageUri?: string;
+  decorationStyle: NonNullable<SlideDesign["decorationStyle"]>;
   onSetColor: (key: keyof SlideDesign, hex: string) => void;
   onSetFontFamily: (f: "sans" | "serif") => void;
   onSetBodyFontFamily: (f: "sans" | "serif") => void;
   onResetColors: () => void;
   onSetBackgroundDesign: (d: BackgroundDesignKey) => void;
   onSetBackgroundImage: (dataUri: string | undefined) => void;
+  onSetDecorationStyle: (d: NonNullable<SlideDesign["decorationStyle"]>) => void;
   logos: BrandLogo[];
   logoWatermark?: Presentation["logoWatermark"];
   onSetLogoWatermark: (w: Presentation["logoWatermark"] | undefined) => void;
@@ -496,6 +584,30 @@ function DesignTab({
           })}
         </div>
       </div>
+
+      {DECORATION_LAYOUTS.has(layoutId) && (
+        <div>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+            Slide decorations
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {DECORATION_STYLES.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => onSetDecorationStyle(key)}
+                className={cn(
+                  "rounded-lg border px-2 py-2 text-[11px] font-medium transition-colors",
+                  decorationStyle === key
+                    ? "border-accent bg-accent-soft text-accent"
+                    : "border-line bg-paper text-ink-muted hover:border-line-strong hover:text-ink",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">

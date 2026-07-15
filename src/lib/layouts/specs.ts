@@ -203,6 +203,51 @@ function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl {
 
 type LayoutFn = (s: Slide, ctx: ResolveCtx) => ResolvedSlide;
 
+// Decorative shapes for the opening/closing "hero" layouts. Style is resolved
+// from the slide's effective ThemeSpec (per-slide slideDesign, layered over
+// presentation-wide themeOverrides) so it's fully configurable from the
+// Inspector's Design tab, with "none"/"minimal" removing them entirely.
+function decorationEls(ctx?: ResolveCtx): LayoutEl[] {
+  const style = ctx?.spec?.decorationStyle ?? "bubbles";
+  if (style === "none" || style === "minimal") return [];
+
+  if (style === "geometric") {
+    const els: LayoutEl[] = [
+      { kind: "shape", shape: "rect", x: W - 4.1, y: -1.5, w: 2.2, h: 2.2, fill: "primary", transparency: 65 },
+      { kind: "shape", shape: "rect", x: W - 2.9, y: 3.6, w: 3.0, h: 3.0, fill: "primary", transparency: 82 },
+      { kind: "shape", shape: "rect", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" },
+    ];
+    return els;
+  }
+
+  if (style === "lines") {
+    const els: LayoutEl[] = [
+      { kind: "shape", shape: "rect", x: W - 3.0, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 70 },
+      { kind: "shape", shape: "rect", x: W - 1.8, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 82 },
+      { kind: "shape", shape: "rect", x: W - 0.6, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 88 },
+    ];
+    return els;
+  }
+
+  if (style === "corners") {
+    const els: LayoutEl[] = [
+      { kind: "shape", shape: "rect", x: W - 1.2, y: 0, w: 1.2, h: 0.12, fill: "primary", transparency: 40 },
+      { kind: "shape", shape: "rect", x: W - 0.12, y: 0, w: 0.12, h: 1.2, fill: "primary", transparency: 40 },
+      { kind: "shape", shape: "rect", x: 0, y: H - 0.12, w: 1.2, h: 0.12, fill: "primary", transparency: 40 },
+      { kind: "shape", shape: "rect", x: 0, y: H - 1.2, w: 0.12, h: 1.2, fill: "primary", transparency: 40 },
+    ];
+    return els;
+  }
+
+  // Default: "bubbles" — the layout's original decoration.
+  const els: LayoutEl[] = [
+    { kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: "primary", transparency: 82 },
+    { kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: "primary", transparency: 60 },
+    { kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" },
+  ];
+  return els;
+}
+
 const titleHero: LayoutFn = (s, ctx) => {
   const els: LayoutEl[] = [];
   const hasImage = !!s.imageUrl;
@@ -210,10 +255,7 @@ const titleHero: LayoutFn = (s, ctx) => {
     els.push({ kind: "image", x: 0, y: 0, w: W, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" });
     els.push(box(0, 0, W, H, "dark", { transparency: 32 }));
   } else {
-    // Decorative geometry, right side: large quiet ring + solid orb.
-    els.push({ kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: "primary", transparency: 82 });
-    els.push({ kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: "primary", transparency: 60 });
-    els.push({ kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" });
+    els.push(...decorationEls(ctx));
   }
   els.push(brandMark(hasImage ? "textOnDark" : "primaryTint", ctx));
   els.push(

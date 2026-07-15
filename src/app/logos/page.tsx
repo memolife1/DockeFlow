@@ -1,23 +1,36 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell, PageHeader } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/ui/Misc";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { IconBadge, IconUpload, IconTrash } from "@/components/ui/icons";
+import { IconBadge, IconUpload, IconTrash, IconCheck } from "@/components/ui/icons";
 import { padLogoTo200x100 } from "@/lib/padLogo";
 
 const ACCEPT = ".png,.svg,.jpg,.jpeg";
 const MAX_BYTES = 2 * 1024 * 1024;
 
 export default function LogosPage() {
+  return (
+    <Suspense fallback={null}>
+      <LogosPageInner />
+    </Suspense>
+  );
+}
+
+function LogosPageInner() {
   const { addBrandLogo, removeBrandLogo, getBrandLogos } = useStore();
   const logos = getBrandLogos();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const inputRef = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [justUploadedIds, setJustUploadedIds] = useState<Set<string>>(new Set());
 
   const handleFiles = async (files: FileList | File[]) => {
     setError("");
@@ -39,7 +52,8 @@ export default function LogosPage() {
         const ext = mime === "image/svg+xml" ? "svg" : "png";
         const name = file.name.replace(/\.[^.]+$/, `.${ext}`);
         const padded = new File([blob], name, { type: mime });
-        await addBrandLogo(padded);
+        const logo = await addBrandLogo(padded);
+        setJustUploadedIds((prev) => new Set(prev).add(logo.id));
       }
     } finally {
       setUploading(false);
@@ -53,6 +67,20 @@ export default function LogosPage() {
           title="Brand Logos"
           subtitle="Upload your logo to watermark it onto every slide."
         />
+
+        {returnTo && (
+          <div className="mt-6 flex items-center justify-between rounded-xl border border-accent/20 bg-accent-soft px-4 py-3">
+            <span className="text-sm font-medium text-accent">
+              Upload your logo here, then return to continue creating your presentation.
+            </span>
+            <button
+              onClick={() => router.push(returnTo)}
+              className="ml-4 shrink-0 rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
+            >
+              ← Back to presentation
+            </button>
+          </div>
+        )}
 
         <div
           onDragOver={(e) => {
@@ -97,6 +125,15 @@ export default function LogosPage() {
           are preserved.
         </p>
 
+        {returnTo && justUploadedIds.size > 0 && (
+          <button
+            onClick={() => router.push(returnTo)}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover"
+          >
+            <IconCheck className="h-4 w-4" /> Logo saved — Back to presentation →
+          </button>
+        )}
+
         <div className="mt-8">
           {logos.length === 0 ? (
             <EmptyState
@@ -125,6 +162,11 @@ export default function LogosPage() {
                     />
                   </div>
                   <p className="mt-1.5 truncate text-[12px] text-ink-muted">{logo.name}</p>
+                  {justUploadedIds.has(logo.id) && (
+                    <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-medium text-white">
+                      <IconCheck className="h-2.5 w-2.5" /> Saved
+                    </span>
+                  )}
                   <button
                     onClick={() => removeBrandLogo(logo.id)}
                     aria-label={`Delete ${logo.name}`}

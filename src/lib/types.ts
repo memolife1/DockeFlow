@@ -141,6 +141,7 @@ export interface Presentation {
     fontFamily?: "sans" | "serif"; // heading font
     bodyFontFamily?: "sans" | "serif"; // body font, independent of heading
     backgroundImageUri?: string; // full-bleed background photo, data URI
+    decorationStyle?: "bubbles" | "geometric" | "lines" | "corners" | "minimal" | "none";
   };
   // A brand logo watermark applied to every slide (preview + PPTX export).
   logoWatermark?: {
@@ -163,6 +164,7 @@ export interface SlideDesign {
   backgroundImageUri?: string; // base64 data URI
   headingFont?: "sans" | "serif";
   bodyFont?: "sans" | "serif";
+  decorationStyle?: "bubbles" | "geometric" | "lines" | "corners" | "minimal" | "none";
 }
 
 export interface Slide {

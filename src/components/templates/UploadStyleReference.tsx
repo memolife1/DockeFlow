@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Field";
 import { IconUpload, IconCheck } from "@/components/ui/icons";
 import type { Template, TemplateTheme } from "@/lib/types";
 import { saveBrandThemeToCloud } from "@/lib/supabaseSync";
+import { cn } from "@/lib/utils";
 
 const BRAND_ROLES = ["primary", "dark", "accent", "surface"] as const;
 const ROLE_LABELS: Record<(typeof BRAND_ROLES)[number], string> = {
@@ -30,12 +31,23 @@ function accentFromName(name: string): string {
 
 type Brand = NonNullable<TemplateTheme["brand"]>;
 
+// Converts a base64 data URI (as produced by FileReader) back into a File,
+// for handing an already-in-memory logo to store actions that take a File.
+function dataUriToFile(dataUri: string, filename: string): File {
+  const [header, base64] = dataUri.split(",");
+  const mime = header.match(/data:(.*?);base64/)?.[1] ?? "image/png";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, { type: mime });
+}
+
 export function UploadStyleReference({
   onUploaded,
 }: {
   onUploaded?: (template: Template) => void;
 }) {
-  const { addUploadedTemplate, addStyleRef } = useStore();
+  const { addUploadedTemplate, addStyleRef, addBrandLogo } = useStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"file" | "url">("file");
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -102,6 +114,11 @@ export function UploadStyleReference({
     onUploaded?.(tpl);
     // Non-Supabase mode never got a chance to save above — fire-and-forget.
     if (brand && !isSupabaseConfigured) void saveBrandThemeToCloud(brand);
+    // A logo attached to the brand (extracted, or added in the confirm
+    // dialog) also becomes available in the Logos library for watermarking.
+    if (brand?.logoDataUri) {
+      void addBrandLogo(dataUriToFile(brand.logoDataUri, `${brand.name ?? "Brand logo"}.png`));
+    }
   };
 
   const handlePptx = async (file: File) => {
@@ -252,17 +269,48 @@ export function UploadStyleReference({
                 </div>
               );
             })}
-            {pendingBrand.logoDataUri && (
-              <div className="ml-1 flex flex-col items-center gap-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={pendingBrand.logoDataUri}
-                  alt="Extracted logo"
-                  className="h-10 w-10 rounded border border-line-strong bg-white object-contain p-1 shadow-card"
+            <div className="ml-1 flex flex-col items-center gap-1">
+              <label className="group relative h-10 w-10 cursor-pointer">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 transition-colors",
+                    pendingBrand.logoDataUri
+                      ? "border-solid border-line-strong bg-white shadow-card"
+                      : "border-dashed border-line group-hover:border-accent",
+                  )}
+                >
+                  {pendingBrand.logoDataUri ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={pendingBrand.logoDataUri}
+                      alt="Logo"
+                      className="h-full w-full object-contain p-0.5"
+                    />
+                  ) : (
+                    <span className="text-[18px] text-ink-faint group-hover:text-accent">+</span>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  className="sr-only"
+                  accept=".png,.svg,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const dataUri = ev.target?.result as string;
+                      setPendingBrand((prev) => (prev ? { ...prev, logoDataUri: dataUri } : prev));
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = "";
+                  }}
                 />
-                <span className="text-[10px] text-ink-muted">Logo</span>
-              </div>
-            )}
+              </label>
+              <span className="text-[10px] text-ink-muted">
+                {pendingBrand.logoDataUri ? "Logo ✓" : "Logo"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">

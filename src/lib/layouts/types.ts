@@ -51,6 +51,8 @@ export interface ThemeSpec {
   // rather than a reusable color role.
   headlineOverride?: string; // hex, no "#"
   bodyOverride?: string; // hex, no "#"
+  // Which decorative shape set title_hero/section_divider/closing_cta draw.
+  decorationStyle?: string;
 }
 
 interface BaseEl {
