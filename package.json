@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
+    "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.0",
     "driver.js": "^1.6.0",
     "html2canvas": "^1.4.1",
