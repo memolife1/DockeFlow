@@ -14,6 +14,12 @@ import {
   hasRequiredLayouts,
   type ModelSlide,
 } from "@/lib/prompt";
+import {
+  isBillingConfigured,
+  getAuthedUser,
+  checkCanGenerate,
+  incrementUsage,
+} from "@/lib/subscription";
 
 export const runtime = "nodejs";
 
@@ -209,6 +215,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "A title is required" }, { status: 400 });
   }
 
+  // Usage limits only apply when there's a real backend to enforce them
+  // against — the app's local/demo mode (no Supabase configured) stays
+  // unrestricted, as it already is everywhere else in this codebase.
+  let accessToken: string | null = null;
+  let userId: string | null = null;
+  if (isBillingConfigured) {
+    const authHeader = req.headers.get("authorization");
+    accessToken = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
+    const user = await getAuthedUser(accessToken);
+    if (!user || !accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = user.id;
+
+    const { allowed, subscription } = await checkCanGenerate(accessToken, userId);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: "limit_reached",
+          message: `You've used all your presentations for this month on the ${subscription.planId} plan. Upgrade to continue.`,
+          planId: subscription.planId,
+          upgrade: true,
+        },
+        { status: 403 },
+      );
+    }
+  }
+
   const input: GenerateInput = {
     presentationId: body.presentationId,
     title: body.title,
@@ -243,5 +277,10 @@ export async function POST(req: Request) {
   }
 
   const slides = draftsToSlides(input.presentationId, drafts);
+
+  if (isBillingConfigured && accessToken && userId) {
+    await incrementUsage(accessToken, userId).catch(() => {});
+  }
+
   return NextResponse.json({ slides, source });
 }

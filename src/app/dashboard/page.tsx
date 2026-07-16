@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { getTemplate } from "@/lib/templates";
 import { IconPlus, IconDeck } from "@/components/ui/icons";
 import { uid } from "@/lib/utils";
+import { PlanBadge } from "@/components/upgrade/PlanBadge";
 import type { Presentation } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -76,10 +77,13 @@ export default function DashboardPage() {
           title={`Welcome back, ${user?.name.split(" ")[0] ?? "there"}`}
           subtitle="Your presentations, ready to edit, preview, or export."
           actions={
-            <ButtonLink href="/new">
-              <IconPlus className="h-4 w-4" />
-              New presentation
-            </ButtonLink>
+            <div className="flex items-center gap-3">
+              {user && <PlanBadge userId={user.id} />}
+              <ButtonLink href="/new">
+                <IconPlus className="h-4 w-4" />
+                New presentation
+              </ButtonLink>
+            </div>
           }
         />
 

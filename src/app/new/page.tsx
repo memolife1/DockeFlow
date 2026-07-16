@@ -18,6 +18,9 @@ import {
   IconCheck,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { UpgradeModal } from "@/components/upgrade/UpgradeModal";
+import type { PlanId } from "@/lib/plans";
 import type { Presentation, PresentationMode, Slide, Tone } from "@/lib/types";
 
 const TONES: { value: Tone; label: string }[] = [
@@ -79,6 +82,7 @@ export default function NewPresentationPage() {
   const [customSlideCount, setCustomSlideCount] = useState(16);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [upgradePlan, setUpgradePlan] = useState<PlanId | undefined>(undefined);
 
   const userImages = getUserImages();
   const logos = getBrandLogos();
@@ -134,9 +138,13 @@ export default function NewPresentationPage() {
         imageSource === "mine" && userImages.length
           ? userImages.map((i) => i.dataUri || i.fileUrl).filter(Boolean)
           : undefined;
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           presentationId: pres.id,
           mode,
@@ -147,6 +155,14 @@ export default function NewPresentationPage() {
           targetSlideCount: effectiveSlideCount,
         }),
       });
+      if (res.status === 403) {
+        const data = (await res.json()) as { planId?: PlanId };
+        updatePresentation(pres.id, { status: "error" });
+        setUpgradePlan(data.planId ?? "free");
+        setGenerating(false);
+        setStep(2);
+        return;
+      }
       if (!res.ok) throw new Error("Generation failed");
       const data = (await res.json()) as { slides: Slide[] };
       setSlides(pres.id, data.slides);
@@ -652,6 +668,12 @@ export default function NewPresentationPage() {
           )}
         </div>
       </div>
+
+      <UpgradeModal
+        isOpen={upgradePlan !== undefined}
+        onClose={() => setUpgradePlan(undefined)}
+        currentPlan={upgradePlan}
+      />
     </div>
   );
 }
