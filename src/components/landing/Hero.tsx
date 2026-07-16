@@ -66,14 +66,22 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="relative mt-14 w-full max-w-[900px] px-2">
-        <div className="overflow-hidden rounded-2xl shadow-2xl" style={{ boxShadow: "0 30px 80px -30px rgba(37,99,235,0.35)" }}>
+      <div className="relative mt-14 w-full max-w-[960px] px-2">
+        <div className="lp-browser-frame" style={{ boxShadow: "0 30px 80px -30px rgba(37,99,235,0.35)" }}>
+          <div className="lp-browser-bar">
+            <div className="lp-browser-dots">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="lp-browser-url" />
+          </div>
           <SmartImage
-            src="/assets/laptop-dark-1.jpg"
-            alt="Presenting a DeckeFlow deck on a laptop"
-            label="Hero visual — laptop-dark-1.jpg"
-            width={1456}
-            height={624}
+            src="/assets/screen-editor.png"
+            alt="The DeckeFlow editor"
+            label="DeckeFlow editor screenshot"
+            width={1440}
+            height={900}
             priority
             className="h-auto w-full"
           />

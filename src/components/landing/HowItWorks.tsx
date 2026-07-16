@@ -2,21 +2,27 @@ import { FadeIn } from "./FadeIn";
 import { SmartImage } from "./SmartImage";
 import { Icon, type LpIconName } from "./icons";
 
-const STEPS: { icon: LpIconName; title: string; body: string }[] = [
+const STEPS: { icon: LpIconName; title: string; body: string; image: string; imageLabel: string }[] = [
   {
     icon: "pen",
     title: "Describe your deck",
     body: "Type a topic or paste your notes. Add your audience, tone, and how many slides you need.",
+    image: "/assets/screen-wizard-step1.png",
+    imageLabel: "Step 1 screenshot",
   },
   {
     icon: "palette",
     title: "Choose your style",
     body: "Pick from 16 professional themes or upload your company's PowerPoint to extract your exact brand colors.",
+    image: "/assets/screen-templates.png",
+    imageLabel: "Step 2 screenshot",
   },
   {
     icon: "download",
     title: "Download and present",
     body: "Export as PowerPoint (.pptx), PDF, or share a live link. Your slides are ready to open in PowerPoint and fully editable.",
+    image: "/assets/screen-export.png",
+    imageLabel: "Step 3 screenshot",
   },
 ];
 
@@ -49,6 +55,19 @@ export function HowItWorks() {
                 <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
                   {step.body}
                 </p>
+                <div
+                  className="mt-4 w-full overflow-hidden rounded-lg shadow-md"
+                  style={{ border: "1px solid var(--line)" }}
+                >
+                  <SmartImage
+                    src={step.image}
+                    alt={step.title}
+                    label={step.imageLabel}
+                    width={700}
+                    height={460}
+                    className="h-auto w-full"
+                  />
+                </div>
               </div>
             </FadeIn>
           ))}
@@ -65,11 +84,11 @@ export function HowItWorks() {
               <div className="lp-browser-url" />
             </div>
             <SmartImage
-              src="/assets/app-editor.png"
+              src="/assets/screen-editor.png"
               alt="The DeckeFlow editor showing a generated presentation"
-              label="Real product screenshot — app-editor.png"
-              width={1600}
-              height={950}
+              label="DeckeFlow editor screenshot"
+              width={1440}
+              height={900}
               className="h-auto w-full"
             />
           </div>

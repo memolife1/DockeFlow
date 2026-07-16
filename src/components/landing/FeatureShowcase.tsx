@@ -14,16 +14,16 @@ const FEATURES: Feature[] = [
   {
     headline: "Your brand. Applied to every slide automatically.",
     body: "Upload your company's PowerPoint template and DeckeFlow reads your exact colors, fonts, and logo. Every generated deck comes out looking like your design team built it.",
-    image: "/assets/laptop-dark-2.jpg",
-    imageLabel: "Brand extraction — laptop-dark-2.jpg",
+    image: "/assets/screen-templates.png",
+    imageLabel: "Brand extraction screenshot",
     badge: "Pro & Business",
     imageSide: "right",
   },
   {
     headline: "Not filler text. Real arguments, real structure.",
     body: "Powered by Claude, every slide makes a specific claim. Headlines are assertions, not topics. Speaker notes tell you exactly what to say. This is consultant-level content, not a template filled with Lorem Ipsum.",
-    image: "/assets/team-review.jpg",
-    imageLabel: "Reviewing a generated deck — team-review.jpg",
+    image: "/assets/screen-editor.png",
+    imageLabel: "Real AI content screenshot",
     imageSide: "left",
   },
   {
