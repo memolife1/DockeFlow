@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Icon } from "./icons";
+import Image from "next/image";
+import { Menu, X } from "lucide-react";
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
@@ -21,20 +22,18 @@ export function Nav() {
       style={{
         background: scrolled ? "rgba(255,255,255,0.92)" : "transparent",
         backdropFilter: scrolled ? "blur(8px)" : undefined,
-        boxShadow: scrolled ? "0 1px 0 var(--line), 0 8px 24px -20px rgba(17,24,39,0.25)" : "none",
+        boxShadow: scrolled ? "0 1px 0 var(--line)" : "none",
       }}
     >
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-4 md:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[17px] font-extrabold text-white lp-display"
-            style={{ background: "var(--accent)" }}
-          >
-            D
-          </span>
-          <span className="lp-display text-lg font-extrabold tracking-tight" style={{ color: "var(--ink)" }}>
-            DeckeFlow
-          </span>
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/brand/deckeflow-logo.png"
+            alt="DeckeFlow"
+            width={137}
+            height={24}
+            priority
+          />
         </Link>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -43,7 +42,7 @@ export function Nav() {
           </Link>
           <Link
             href="/signup"
-            className="rounded-full px-5 py-2.5 text-sm font-bold text-white transition-transform hover:scale-[1.03]"
+            className="rounded-full px-5 py-2.5 text-sm font-bold text-white"
             style={{ background: "var(--accent)" }}
           >
             Start free →
@@ -52,11 +51,11 @@ export function Nav() {
 
         <button
           aria-label={open ? "Close menu" : "Open menu"}
-          className="flex h-9 w-9 items-center justify-center rounded-lg md:hidden"
+          className="flex h-9 w-9 items-center justify-center md:hidden"
           style={{ color: "var(--ink)" }}
           onClick={() => setOpen((v) => !v)}
         >
-          <Icon name={open ? "x" : "menu"} size={22} />
+          {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 

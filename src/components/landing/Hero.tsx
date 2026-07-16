@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { SmartImage } from "./SmartImage";
-import { Icon } from "./icons";
 
 export function Hero() {
   return (
@@ -10,22 +9,16 @@ export function Hero() {
     >
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-6">
         <span
-          className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest"
-          style={{ background: "var(--accent-light)", color: "var(--accent)" }}
+          className="lp-eyebrow inline-flex items-center rounded-full px-4 py-2"
+          style={{ border: "1px solid var(--line)" }}
         >
-          <Icon name="sparkles" size={14} />
-          AI-powered presentation builder
+          Presentation builder
         </span>
 
-        <h1
-          className="lp-display text-[36px] font-extrabold leading-[1.08] tracking-tight md:text-[72px]"
-          style={{ color: "var(--ink)" }}
-        >
+        <h1 className="text-[36px] md:text-[72px]" style={{ color: "var(--ink)" }}>
           Your messy notes.
           <br />
-          <span style={{ color: "var(--accent)", textDecoration: "underline", textDecorationColor: "var(--accent-light)", textDecorationThickness: "6px", textUnderlineOffset: "6px" }}>
-            Boardroom-ready
-          </span>
+          <span style={{ color: "var(--accent)" }}>Boardroom-ready</span>
           <br />
           in 8 minutes.
         </h1>
@@ -38,7 +31,7 @@ export function Hero() {
         <div className="mt-2 flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href="/signup"
-            className="rounded-full px-7 py-4 text-base font-bold text-white shadow-lg transition-transform hover:scale-[1.03]"
+            className="rounded-full px-7 py-4 text-base font-bold text-white"
             style={{ background: "var(--accent)" }}
           >
             Start free — no credit card
@@ -55,7 +48,7 @@ export function Hero() {
             { value: "5", label: "languages supported" },
           ].map((stat) => (
             <div key={stat.label} className="flex flex-col items-center gap-1">
-              <span className="lp-display text-2xl font-extrabold md:text-3xl" style={{ color: "var(--ink)" }}>
+              <span className="lp-display text-2xl md:text-3xl" style={{ color: "var(--ink)" }}>
                 {stat.value}
               </span>
               <span className="max-w-[110px] text-xs" style={{ color: "var(--ink-light)" }}>
@@ -67,7 +60,7 @@ export function Hero() {
       </div>
 
       <div className="relative mt-14 w-full max-w-[960px] px-2">
-        <div className="lp-browser-frame" style={{ boxShadow: "0 30px 80px -30px rgba(37,99,235,0.35)" }}>
+        <div className="lp-browser-frame">
           <div className="lp-browser-bar">
             <div className="lp-browser-dots">
               <span />

@@ -1,7 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-// Wordmark: a small stacked-slides glyph + "DeckeFlow".
+// The real DeckeFlow wordmark (public/brand/deckeflow-logo.png, 836x146,
+// transparent background — dark navy "Decke" + blue "Flow"). Designed for
+// light backgrounds, which is everywhere the app renders it.
 export function Logo({
   className,
   href = "/",
@@ -11,23 +14,17 @@ export function Logo({
   href?: string;
   compact?: boolean;
 }) {
+  const height = compact ? 18 : 22;
+  const width = Math.round(height * (836 / 146));
   return (
-    <Link
-      href={href}
-      className={cn("group inline-flex items-center gap-2", className)}
-    >
-      <span className="relative flex h-7 w-7 items-center justify-center">
-        <span className="absolute inset-0 rounded-[7px] border border-line-strong bg-paper" />
-        <span className="absolute inset-0 translate-x-[3px] translate-y-[3px] rounded-[7px] bg-accent" />
-        <span className="relative flex h-7 w-7 items-center justify-center rounded-[7px] border border-ink/10 bg-ink text-[13px] font-bold text-white">
-          D
-        </span>
-      </span>
-      {!compact && (
-        <span className="text-[15px] font-semibold tracking-[-0.01em] text-ink">
-          Decke<span className="text-accent">Flow</span>
-        </span>
-      )}
+    <Link href={href} className={cn("inline-flex items-center", className)}>
+      <Image
+        src="/brand/deckeflow-logo.png"
+        alt="DeckeFlow"
+        width={width}
+        height={height}
+        priority
+      />
     </Link>
   );
 }

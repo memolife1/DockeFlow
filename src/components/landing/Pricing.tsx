@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { FadeIn } from "./FadeIn";
-import { Icon } from "./icons";
 
 interface Tier {
   name: string;
@@ -86,18 +86,12 @@ const COMPARISON_ROWS: [string, string, string, string, string][] = [
 
 export function Pricing() {
   return (
-    <section className="px-5 py-24 md:px-8" style={{ background: "var(--bg)" }}>
+    <section id="pricing" className="px-5 py-24 md:px-8" style={{ background: "var(--bg)" }}>
       <div className="mx-auto max-w-[1150px]">
-        <FadeIn className="text-center">
-          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>
-            Simple, honest pricing
-          </p>
-          <h2 className="lp-display mx-auto mt-3 max-w-xl text-3xl font-extrabold leading-tight md:text-5xl" style={{ color: "var(--ink)" }}>
-            Start free. Upgrade when you need more.
+        <FadeIn>
+          <h2 className="text-4xl md:text-6xl" style={{ color: "var(--ink)" }}>
+            Pricing.
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-base" style={{ color: "var(--ink-muted)" }}>
-            No hidden fees. No credit card required to start.
-          </p>
         </FadeIn>
 
         <div className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
@@ -134,7 +128,7 @@ export function Pricing() {
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {tier.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-[13px] leading-snug" style={{ color: "var(--ink-muted)" }}>
-                      <Icon name="check" size={14} color="var(--accent)" className="mt-0.5 shrink-0" />
+                      <Check size={14} strokeWidth={2} className="mt-0.5 shrink-0" style={{ color: "var(--ink-muted)" }} />
                       {f}
                     </li>
                   ))}

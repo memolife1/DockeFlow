@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { FadeIn } from "./FadeIn";
-import { Icon } from "./icons";
 
 const FAQS = [
   {
@@ -43,11 +43,11 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <span className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
           {q}
         </span>
-        <Icon
-          name="chevronDown"
+        <ChevronDown
           size={18}
-          color="var(--ink-muted)"
+          strokeWidth={1.75}
           className="shrink-0 transition-transform"
+          style={{ color: "var(--ink-muted)", transform: open ? "rotate(180deg)" : undefined }}
         />
       </button>
       {open && (
