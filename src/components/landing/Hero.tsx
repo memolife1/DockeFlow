@@ -69,11 +69,11 @@ export function Hero() {
       <div className="relative mt-14 w-full max-w-[900px] px-2">
         <div className="overflow-hidden rounded-2xl shadow-2xl" style={{ boxShadow: "0 30px 80px -30px rgba(37,99,235,0.35)" }}>
           <SmartImage
-            src="/assets/laptop-dark-1.png"
-            alt="DeckeFlow editor shown on a laptop"
-            label="Product screenshot — laptop-dark-1.png"
-            width={1440}
-            height={900}
+            src="/assets/laptop-dark-1.jpg"
+            alt="Presenting a DeckeFlow deck on a laptop"
+            label="Hero visual — laptop-dark-1.jpg"
+            width={1456}
+            height={624}
             priority
             className="h-auto w-full"
           />

@@ -14,16 +14,16 @@ const FEATURES: Feature[] = [
   {
     headline: "Your brand. Applied to every slide automatically.",
     body: "Upload your company's PowerPoint template and DeckeFlow reads your exact colors, fonts, and logo. Every generated deck comes out looking like your design team built it.",
-    image: "/assets/laptop-dark-2.png",
-    imageLabel: "Brand extraction — laptop-dark-2.png",
+    image: "/assets/laptop-dark-2.jpg",
+    imageLabel: "Brand extraction — laptop-dark-2.jpg",
     badge: "Pro & Business",
     imageSide: "right",
   },
   {
     headline: "Not filler text. Real arguments, real structure.",
     body: "Powered by Claude, every slide makes a specific claim. Headlines are assertions, not topics. Speaker notes tell you exactly what to say. This is consultant-level content, not a template filled with Lorem Ipsum.",
-    image: "/assets/app-editor.png",
-    imageLabel: "Real product screenshot — app-editor.png",
+    image: "/assets/team-review.jpg",
+    imageLabel: "Reviewing a generated deck — team-review.jpg",
     imageSide: "left",
   },
   {
@@ -36,8 +36,8 @@ const FEATURES: Feature[] = [
   {
     headline: "Every slide picks the right layout for its content.",
     body: "Stat cards for numbers. Timelines for processes. Funnels for sales data. Full-bleed images for events. The AI picks the layout that fits the content — not the same template for every slide.",
-    image: "/assets/laptop-desk.png",
-    imageLabel: "20+ layouts — laptop-desk.png",
+    image: "/assets/laptop-desk.jpg",
+    imageLabel: "20+ layouts — laptop-desk.jpg",
     imageSide: "left",
   },
   {
