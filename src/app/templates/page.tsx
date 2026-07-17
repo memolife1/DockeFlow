@@ -10,13 +10,20 @@ import { Eyebrow } from "@/components/ui/Misc";
 import { TEMPLATE_CATEGORIES } from "@/lib/templates";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { IconArrowRight } from "@/components/ui/icons";
+import { IconArrowRight, IconLock } from "@/components/ui/icons";
+import { useSubscription } from "@/lib/useSubscription";
+import { UpgradeModal } from "@/components/upgrade/UpgradeModal";
+
+const FREE_TEMPLATE_LIMIT = 3;
 
 export default function TemplatesPage() {
   const { templates } = useStore();
   const router = useRouter();
+  const { subscription } = useSubscription();
   const [cat, setCat] = useState("All");
   const [selected, setSelected] = useState<string | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const templatesLocked = !subscription.features.allTemplates;
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -106,14 +113,29 @@ export default function TemplatesPage() {
             </div>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {builtIn.map((t) => (
-              <TemplateCard
-                key={t.id}
-                template={t}
-                selected={selected === t.id}
-                onSelect={() => setSelected(t.id)}
-              />
-            ))}
+            {builtIn.map((t, i) => {
+              const locked = templatesLocked && i >= FREE_TEMPLATE_LIMIT;
+              return (
+                <div key={t.id} className="relative">
+                  <TemplateCard
+                    template={t}
+                    selected={selected === t.id}
+                    onSelect={() => (locked ? setShowUpgrade(true) : setSelected(t.id))}
+                  />
+                  {locked && (
+                    <button
+                      onClick={() => setShowUpgrade(true)}
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-paper/85 text-center backdrop-blur-[1px]"
+                    >
+                      <IconLock className="h-4 w-4 text-ink-muted" />
+                      <span className="text-[11px] font-semibold text-ink-muted">
+                        Upgrade to unlock
+                      </span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -130,6 +152,12 @@ export default function TemplatesPage() {
           </Button>
         </div>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        currentPlan={subscription.planId}
+      />
     </AppShell>
   );
 }

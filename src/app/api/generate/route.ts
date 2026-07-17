@@ -20,6 +20,7 @@ import {
   checkCanGenerate,
   incrementUsage,
 } from "@/lib/subscription";
+import { PLANS } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
@@ -237,6 +238,21 @@ export async function POST(req: Request) {
           message: `You've used all your presentations for this month on the ${subscription.planId} plan. Upgrade to continue.`,
           planId: subscription.planId,
           upgrade: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    const plan = PLANS[subscription.planId];
+    const requestedSlides = body.targetSlideCount ?? 10;
+    if (requestedSlides > plan.maxSlides) {
+      return NextResponse.json(
+        {
+          error: "slide_limit_exceeded",
+          message: `Your ${plan.name} plan supports up to ${plan.maxSlides} slides per presentation. Upgrade to create longer decks.`,
+          maxSlides: plan.maxSlides,
+          planId: subscription.planId,
+          upgrade: subscription.planId !== "business",
         },
         { status: 403 },
       );

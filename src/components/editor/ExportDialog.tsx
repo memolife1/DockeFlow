@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Misc";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { IconDoc, IconDeck, IconCheck } from "@/components/ui/icons";
+import { IconDoc, IconDeck, IconCheck, IconLock } from "@/components/ui/icons";
 import type { ExportJob } from "@/lib/types";
 import { exportDeckToPptx } from "@/lib/pptx";
 import { getTemplate, BUILT_IN_TEMPLATES } from "@/lib/templates";
 import { IconCopy } from "@/components/ui/icons";
+import { useSubscription } from "@/lib/useSubscription";
 
 const FORMATS: {
   value: ExportJob["format"];
@@ -35,6 +36,8 @@ export function ExportDialog({
   title: string;
 }) {
   const { createExportJob, getPresentation, slidesFor, templates, getBrandLogos } = useStore();
+  const { subscription } = useSubscription();
+  const pptxLocked = !subscription.features.pptxExport;
   const [format, setFormat] = useState<ExportJob["format"]>("pptx");
   const [state, setState] = useState<"idle" | "processing" | "ready" | "error">(
     "idle",
@@ -42,7 +45,13 @@ export function ExportDialog({
   const [shareUrl, setShareUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Don't default free-plan users into a locked format.
+  useEffect(() => {
+    if (pptxLocked && format === "pptx") setFormat("pdf");
+  }, [pptxLocked, format]);
+
   const run = async () => {
+    if (format === "pptx" && pptxLocked) return;
     setState("processing");
     setShareUrl("");
     setCopied(false);
@@ -80,13 +89,19 @@ export function ExportDialog({
         const logoDataUri = pres.logoWatermark
           ? getBrandLogos().find((l) => l.id === pres.logoWatermark?.logoId)?.dataUri
           : undefined;
-        await exportDeckToPptx(pres, slides, template.theme, { imageData, logoDataUri });
+        await exportDeckToPptx(pres, slides, template.theme, {
+          imageData,
+          logoDataUri,
+          planWatermark: subscription.features.watermark,
+        });
       } else if (format === "pdf") {
         const { exportDeckToPdf } = await import("@/lib/exportPdf");
         const logoDataUri = pres.logoWatermark
           ? getBrandLogos().find((l) => l.id === pres.logoWatermark?.logoId)?.dataUri
           : undefined;
-        await exportDeckToPdf(pres, slides, template.theme, logoDataUri);
+        await exportDeckToPdf(pres, slides, template.theme, logoDataUri, {
+          planWatermark: subscription.features.watermark,
+        });
       } else {
         const res = await fetch("/api/share", {
           method: "POST",
@@ -141,7 +156,10 @@ export function ExportDialog({
             <Button variant="secondary" onClick={close}>
               Cancel
             </Button>
-            <Button onClick={run} disabled={state === "processing"}>
+            <Button
+              onClick={run}
+              disabled={state === "processing" || (format === "pptx" && pptxLocked)}
+            >
               {state === "processing" ? <Spinner /> : "Export"}
             </Button>
           </>
@@ -207,36 +225,47 @@ export function ExportDialog({
         </div>
       ) : (
         <div className="space-y-2">
-          {FORMATS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFormat(f.value)}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
-                format === f.value
-                  ? "border-accent bg-accent-soft"
-                  : "border-line hover:bg-paper-soft",
-              )}
-            >
-              <div
+          {FORMATS.map((f) => {
+            const locked = f.value === "pptx" && pptxLocked;
+            return (
+              <button
+                key={f.value}
+                onClick={() => setFormat(f.value)}
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-md",
+                  "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
                   format === f.value
-                    ? "bg-accent text-white"
-                    : "bg-paper-sunk text-ink-soft",
+                    ? "border-accent bg-accent-soft"
+                    : "border-line hover:bg-paper-soft",
                 )}
               >
-                <f.icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-ink">{f.label}</p>
-                <p className="text-[12px] text-ink-muted">{f.sub}</p>
-              </div>
-              {format === f.value && (
-                <IconCheck className="h-4 w-4 text-accent" />
-              )}
-            </button>
-          ))}
+                <div
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-md",
+                    format === f.value
+                      ? "bg-accent text-white"
+                      : "bg-paper-sunk text-ink-soft",
+                  )}
+                >
+                  <f.icon className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-ink">{f.label}</p>
+                  <p className="text-[12px] text-ink-muted">
+                    {locked ? (
+                      <span className="inline-flex items-center gap-1">
+                        <IconLock className="h-3 w-3" /> Requires Starter plan or higher
+                      </span>
+                    ) : (
+                      f.sub
+                    )}
+                  </p>
+                </div>
+                {format === f.value && !locked && (
+                  <IconCheck className="h-4 w-4 text-accent" />
+                )}
+              </button>
+            );
+          })}
           <p className="pt-1 text-[12px] text-ink-muted">
             Export produces native editable PowerPoint objects — text, shapes,
             and charts stay fully editable in PowerPoint.

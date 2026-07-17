@@ -26,6 +26,9 @@ export interface ExportOptions {
   imageData?: Record<string, string>;
   // Resolved brand logo, when presentation.logoWatermark is set.
   logoDataUri?: string;
+  // Free-plan export watermark ("Made with DeckeFlow"), independent of
+  // the user's own logoWatermark above.
+  planWatermark?: boolean;
 }
 
 function safeFileName(title: string): string {
@@ -120,6 +123,18 @@ export async function exportDeckToPptx(
     }
     if (presentation.logoWatermark && options.logoDataUri) {
       renderWatermark(s, presentation.logoWatermark, options.logoDataUri);
+    }
+    if (options.planWatermark) {
+      s.addText("Made with DeckeFlow — deckeflow.com", {
+        x: 0.1,
+        y: CANVAS_H - 0.4,
+        w: CANVAS_W - 0.2,
+        h: 0.3,
+        fontSize: 9,
+        color: "AAAAAA",
+        align: "center",
+        italic: true,
+      });
     }
     if (slide.speakerNotes) s.addNotes(slide.speakerNotes);
   });

@@ -11,6 +11,7 @@ import { getTemplate } from "@/lib/templates";
 import { IconPlus, IconDeck } from "@/components/ui/icons";
 import { uid } from "@/lib/utils";
 import { PlanBadge } from "@/components/upgrade/PlanBadge";
+import { startCheckout } from "@/lib/checkout";
 import type { Presentation } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -41,6 +42,22 @@ export default function DashboardPage() {
       /* ignore (e.g. localStorage unavailable) */
     }
   }, [ready, user]);
+
+  // A paid plan chosen on the landing page pricing CTA before signup is
+  // parked here (see src/app/signup/page.tsx) — pick it up on first
+  // dashboard load and send the user straight into Stripe Checkout.
+  useEffect(() => {
+    if (!user) return;
+    let pendingPriceId: string | null = null;
+    try {
+      pendingPriceId = localStorage.getItem("pending_price_id");
+      localStorage.removeItem("pending_plan");
+      localStorage.removeItem("pending_price_id");
+    } catch {
+      /* ignore (e.g. localStorage unavailable) */
+    }
+    if (pendingPriceId) void startCheckout(pendingPriceId);
+  }, [user]);
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -78,7 +95,7 @@ export default function DashboardPage() {
           subtitle="Your presentations, ready to edit, preview, or export."
           actions={
             <div className="flex items-center gap-3">
-              {user && <PlanBadge userId={user.id} />}
+              {user && <PlanBadge />}
               <ButtonLink href="/new">
                 <IconPlus className="h-4 w-4" />
                 New presentation

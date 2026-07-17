@@ -156,11 +156,19 @@ export default function NewPresentationPage() {
         }),
       });
       if (res.status === 403) {
-        const data = (await res.json()) as { planId?: PlanId };
+        const data = (await res.json()) as {
+          error?: string;
+          message?: string;
+          planId?: PlanId;
+        };
         updatePresentation(pres.id, { status: "error" });
-        setUpgradePlan(data.planId ?? "free");
         setGenerating(false);
         setStep(2);
+        if (data.error === "slide_limit_exceeded") {
+          setError(data.message ?? "That slide count isn't available on your plan.");
+        } else {
+          setUpgradePlan(data.planId ?? "free");
+        }
         return;
       }
       if (!res.ok) throw new Error("Generation failed");

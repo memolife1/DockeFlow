@@ -17,6 +17,7 @@ export async function exportDeckToPdf(
   slides: Slide[],
   theme: TemplateTheme,
   logoDataUri?: string,
+  options: { planWatermark?: boolean } = {},
 ): Promise<void> {
   const { default: html2canvas } = await import("html2canvas");
   const { default: jsPDF } = await import("jspdf");
@@ -70,6 +71,16 @@ export async function exportDeckToPdf(
       });
 
       root.unmount();
+
+      if (options.planWatermark) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.font = "italic 14px sans-serif";
+          ctx.fillStyle = "rgba(170,170,170,0.9)";
+          ctx.textAlign = "center";
+          ctx.fillText("Made with DeckeFlow — deckeflow.com", 640, 705);
+        }
+      }
 
       if (i > 0) pdf.addPage([1280, 720], "landscape");
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 1280, 720);

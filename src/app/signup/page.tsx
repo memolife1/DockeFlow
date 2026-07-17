@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +10,21 @@ import { Spinner } from "@/components/ui/Misc";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { useStore } from "@/lib/store";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { PLANS, type PlanId } from "@/lib/plans";
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageInner />
+    </Suspense>
+  );
+}
+
+function SignupPageInner() {
   const { signup } = useStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const plan = searchParams.get("plan") as PlanId | null;
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -33,6 +44,23 @@ export default function SignupPage() {
     setError("");
     setNotice("");
     setLoading(true);
+
+    // Park the chosen paid plan for the dashboard to pick up once a
+    // session exists — immediately if email confirmation isn't required,
+    // otherwise the next time this user lands on /dashboard after
+    // confirming and logging in.
+    if (plan && plan !== "free") {
+      const priceId = PLANS[plan]?.stripePriceId;
+      if (priceId) {
+        try {
+          localStorage.setItem("pending_plan", plan);
+          localStorage.setItem("pending_price_id", priceId);
+        } catch {
+          /* ignore (e.g. localStorage unavailable) */
+        }
+      }
+    }
+
     try {
       if (isSupabaseConfigured && supabase) {
         const { data, error } = await supabase.auth.signUp({

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PLANS, type PlanId } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { startCheckout } from "@/lib/checkout";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -22,29 +22,12 @@ export function UpgradeModal({ isOpen, onClose, currentPlan }: UpgradeModalProps
 
   const handleUpgrade = async (planId: PlanId) => {
     const priceId = PLANS[planId].stripePriceId;
-    if (!priceId || !supabase) return;
+    if (!priceId) return;
     setError("");
     setLoadingPlan(planId);
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ priceId }),
-      });
-      const json = await res.json();
-      if (json.url) {
-        window.location.href = json.url;
-      } else {
-        setError(json.error ?? "Something went wrong. Please try again.");
-        setLoadingPlan(null);
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    const errorMessage = await startCheckout(priceId);
+    if (errorMessage) {
+      setError(errorMessage);
       setLoadingPlan(null);
     }
   };

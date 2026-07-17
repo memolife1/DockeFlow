@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { Check } from "lucide-react";
 import { FadeIn } from "./FadeIn";
+import { PricingCta } from "./PricingCta";
+import { PLANS } from "@/lib/plans";
 
 interface Tier {
+  planId: "free" | "starter" | "pro" | "business";
   name: string;
   price: string;
   features: string[];
@@ -13,6 +15,7 @@ interface Tier {
 
 const TIERS: Tier[] = [
   {
+    planId: "free",
     name: "Free",
     price: "$0",
     features: [
@@ -23,9 +26,10 @@ const TIERS: Tier[] = [
       "Watermark on slides",
     ],
     cta: "Get started free",
-    href: "/signup",
+    href: "/signup?plan=free",
   },
   {
+    planId: "starter",
     name: "Starter",
     price: "$9",
     features: [
@@ -40,6 +44,7 @@ const TIERS: Tier[] = [
     href: "/signup?plan=starter",
   },
   {
+    planId: "pro",
     name: "Pro",
     price: "$29",
     features: [
@@ -57,6 +62,7 @@ const TIERS: Tier[] = [
     highlight: true,
   },
   {
+    planId: "business",
     name: "Business",
     price: "$79",
     features: [
@@ -133,17 +139,13 @@ export function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <Link
+                <PricingCta
+                  planId={tier.planId}
+                  priceId={PLANS[tier.planId].stripePriceId}
                   href={tier.href}
-                  className="mt-6 rounded-full px-4 py-3 text-center text-sm font-bold transition-transform hover:scale-[1.02]"
-                  style={
-                    tier.highlight
-                      ? { background: "var(--accent)", color: "#fff" }
-                      : { background: "var(--bg)", color: "var(--ink)", border: "1px solid var(--line)" }
-                  }
-                >
-                  {tier.cta}
-                </Link>
+                  label={tier.cta}
+                  highlight={tier.highlight}
+                />
               </div>
             </FadeIn>
           ))}
