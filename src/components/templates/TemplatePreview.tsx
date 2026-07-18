@@ -252,32 +252,148 @@ function Monochrome() {
   );
 }
 
-// Generic fallback for uploaded / custom templates — a clean titled slide
-// using the template's own accent so uploads still read as a real deck.
+// A small representative mark in the corner, standing in for the template's
+// full decorationStyle DNA (specs.ts renders the real thing at deck scale).
+function DecorationMark({
+  style,
+  color,
+}: {
+  style?: Template["theme"]["decorationStyle"];
+  color: string;
+}) {
+  if (!style || style === "none" || style === "minimal") return null;
+  if (style === "geometric") {
+    return (
+      <div
+        className="pointer-events-none absolute right-[-6%] top-[-14%] h-[46%] w-[30%] rotate-[8deg]"
+        style={{ background: color, opacity: 0.16 }}
+      />
+    );
+  }
+  if (style === "lines") {
+    return (
+      <div className="pointer-events-none absolute right-[6%] top-0 flex h-full gap-[3%]">
+        {[0.28, 0.18, 0.1].map((o, i) => (
+          <div key={i} className="h-full w-[3%]" style={{ background: color, opacity: o }} />
+        ))}
+      </div>
+    );
+  }
+  if (style === "corners") {
+    return (
+      <div
+        className="pointer-events-none absolute right-[4%] top-[6%] h-[16%] w-[16%] border-r-[0.5cqw] border-t-[0.5cqw]"
+        style={{ borderColor: color, opacity: 0.55 }}
+      />
+    );
+  }
+  // circles
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute right-[-14%] top-[-24%] h-[60%] w-[34%] rounded-full"
+        style={{ background: color, opacity: 0.16 }}
+      />
+      <div
+        className="pointer-events-none absolute right-[2%] top-[30%] h-[24%] w-[13%] rounded-full"
+        style={{ background: color, opacity: 0.32 }}
+      />
+    </>
+  );
+}
+
+// A small chip demonstrating the template's cardStyle DNA (flat / bordered /
+// elevated / filled) so the picker hints at how stat/comparison cards will
+// actually look, not just a generic gray bar.
+function CardStyleChip({
+  style,
+  accent,
+  onDark,
+}: {
+  style: Template["theme"]["cardStyle"];
+  accent: string;
+  onDark: boolean;
+}) {
+  const base = "h-[22%] w-[26%] rounded-[0.6cqw]";
+  if (style === "filled") {
+    return <div className={base} style={{ background: accent }} />;
+  }
+  if (style === "bordered") {
+    return (
+      <div
+        className={base}
+        style={{ border: `0.15cqw solid ${accent}`, background: "transparent" }}
+      />
+    );
+  }
+  if (style === "elevated") {
+    return (
+      <div
+        className={base}
+        style={{
+          background: onDark ? "rgba(255,255,255,0.08)" : "#ffffff",
+          boxShadow: "0 0.3cqw 0.8cqw rgba(0,0,0,0.18)",
+        }}
+      />
+    );
+  }
+  // flat (default)
+  return (
+    <div
+      className={base}
+      style={{ background: onDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }}
+    />
+  );
+}
+
+// Fallback for uploaded/custom templates and any built-in without a bespoke
+// hand-crafted preview above — driven entirely by the template's visual DNA
+// (background treatment, headline weight/spacing, decoration, card style) so
+// two templates that only differ by that DNA still render as visibly
+// different slides, not a recolored copy of the same wireframe.
 function GenericPreview({ template }: { template: Template }) {
   const { theme } = template;
+  const onDark =
+    theme.backgroundStyle === "dark-gradient" ||
+    theme.backgroundStyle === "gradient" ||
+    theme.backgroundStyle === "mesh";
+  const background = theme.backgroundGradient ?? theme.surface;
+  const ink = onDark ? "#FFFFFF" : theme.ink;
+  const bodyColor = onDark ? "rgba(255,255,255,0.7)" : "#5c5f66";
   return (
-    <Frame background="#ffffff" color="#1a1b21" serif={theme.fontFamily === "serif"}>
-      <div className="relative flex h-full flex-col px-[8%] py-[7%]">
-        <div
-          className="absolute left-0 top-0 h-full w-[1.6cqw]"
-          style={{ background: theme.accent }}
-        />
+    <Frame background={background} color={ink} serif={theme.fontFamily === "serif"}>
+      <div className="relative flex h-full flex-col overflow-hidden px-[8%] py-[7%]">
+        <DecorationMark style={theme.decorationStyle} color={onDark ? "#FFFFFF" : theme.accent} />
+        {!onDark && (
+          <div
+            className="absolute left-0 top-0 h-full w-[1.6cqw]"
+            style={{ background: theme.accent }}
+          />
+        )}
         <span
-          className="text-[2.3cqw] font-semibold uppercase tracking-[0.2em]"
-          style={{ color: theme.accent }}
+          className="relative text-[2.3cqw] font-semibold uppercase tracking-[0.2em]"
+          style={{ color: onDark ? ink : theme.accent }}
         >
           {template.name}
         </span>
-        <h3 className="mt-[3%] text-[6.4cqw] font-bold leading-[1.02] tracking-[-0.02em]">
+        <h3
+          className="relative mt-[3%] text-[6.4cqw] leading-[1.02]"
+          style={{
+            fontWeight: theme.headlineWeight ?? 700,
+            letterSpacing: `${theme.headlineLetterSpacing ?? -0.02}em`,
+          }}
+        >
           {template.sourceType === "uploaded"
             ? "Your brand, applied."
-            : template.theme.character || "A premium template."}
+            : theme.character || "A premium template."}
         </h3>
-        <div className="mt-auto space-y-[3%]">
-          <div className="h-[2cqw] w-[70%] rounded-full bg-[#eceef5]" />
-          <div className="h-[2cqw] w-[52%] rounded-full bg-[#eceef5]" />
-          <div className="h-[2cqw] w-[60%] rounded-full bg-[#eceef5]" />
+        <p className="relative mt-[3%] max-w-[80%] text-[2.4cqw]" style={{ color: bodyColor }}>
+          Q3 growth, one recommendation, and the numbers that back it.
+        </p>
+        <div className="relative mt-auto flex items-end gap-[4%]">
+          <CardStyleChip style={theme.cardStyle} accent={theme.accent} onDark={onDark} />
+          <CardStyleChip style={theme.cardStyle} accent={theme.accent} onDark={onDark} />
+          <CardStyleChip style={theme.cardStyle} accent={theme.accent} onDark={onDark} />
         </div>
       </div>
     </Frame>

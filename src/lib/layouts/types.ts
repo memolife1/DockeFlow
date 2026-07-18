@@ -53,6 +53,17 @@ export interface ThemeSpec {
   bodyOverride?: string; // hex, no "#"
   // Which decorative shape set title_hero/section_divider/closing_cta draw.
   decorationStyle?: string;
+
+  // Template visual DNA (lib/types.ts TemplateTheme), carried through so
+  // layouts can render more than just a recolored copy of one wireframe.
+  backgroundStyle?: "solid" | "gradient" | "dark-gradient" | "mesh";
+  backgroundGradient?: string;
+  headlineWeight?: 700 | 800 | 900;
+  headlineLetterSpacing?: number; // em
+  headlineSizeMultiplier?: number;
+  decorationOpacity?: number; // 0..1
+  cardStyle?: "flat" | "bordered" | "elevated" | "filled";
+  accentLineWeight?: number;
 }
 
 interface BaseEl {
@@ -76,6 +87,9 @@ export interface TextEl extends BaseEl {
   charSpacing?: number; // pt
   shrink?: boolean; // auto-shrink to fit box (pptx fit:'shrink')
   maxLines?: number; // preview-side clamp hint
+  // Template headline DNA (set via the titleText() helper in specs.ts).
+  weight?: 700 | 800 | 900; // overrides the plain bold=700 default
+  letterSpacing?: number; // em units — preview uses directly, pptx converts to pt
 }
 
 export type ShapeKind = "rect" | "roundRect" | "ellipse" | "chevron" | "trapezoid";

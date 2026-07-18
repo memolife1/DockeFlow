@@ -211,6 +211,21 @@ export interface TemplateTheme {
   fontFamily: "sans" | "serif";
   // A short label describing the visual character (shown in the picker).
   character: string;
+
+  // Visual DNA — a template's structural identity beyond its color palette.
+  // All optional so brand-extracted themes (which only ever set accent/
+  // surface/ink/fontFamily) keep working unchanged; only built-in templates
+  // set these deliberately.
+  backgroundStyle?: "solid" | "gradient" | "dark-gradient" | "mesh";
+  backgroundGradient?: string; // CSS gradient string, used when backgroundStyle isn't "solid"
+  headlineWeight?: 700 | 800 | 900;
+  headlineLetterSpacing?: number; // em units, e.g. -0.04
+  headlineSizeMultiplier?: number; // 1.0 = normal, 1.2 = bigger titles
+  decorationStyle?: "circles" | "geometric" | "lines" | "corners" | "minimal" | "none";
+  decorationOpacity?: number; // 0.0 to 1.0
+  cardStyle?: "flat" | "bordered" | "elevated" | "filled";
+  accentLineWeight?: number; // thickness of accent lines/borders in layouts
+
   // Brand overrides extracted from an uploaded .pptx (Phase 4). Roles map to
   // the layout system's ColorRole names.
   brand?: {

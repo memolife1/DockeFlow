@@ -68,6 +68,14 @@ export function SlideView({
     showDefaultBrandMark,
   });
   const design = spec.backgroundDesign ? BACKGROUND_DESIGNS[spec.backgroundDesign] : undefined;
+  // A gradient-DNA template ("Midnight Navy", "Cobalt Pro", ...) paints its
+  // signature gradient behind every hero/content slide instead of the flat
+  // role color pptx export falls back to — cosmetic-only, the underlying
+  // colors[resolved.background] hex (already contrast-safe, see
+  // buildThemeSpec) is what PPTX actually uses.
+  const usesGradientBg =
+    !!spec.backgroundGradient &&
+    (resolved.background === "surface" || resolved.background === "dark");
 
   return (
     <div
@@ -76,7 +84,9 @@ export function SlideView({
         className,
       )}
       style={{
-        background: `#${spec.colors[resolved.background]}`,
+        background: usesGradientBg
+          ? spec.backgroundGradient
+          : `#${spec.colors[resolved.background]}`,
         fontFamily: spec.fontBodyCss,
       }}
     >
@@ -198,13 +208,16 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
           direction: isArabic ? "rtl" : undefined,
           color: `#${resolvedColor}`,
           fontSize: `${el.size * PT}cqw`,
-          fontWeight: el.bold ? 700 : 400,
+          fontWeight: el.weight ?? (el.bold ? 700 : 400),
           fontStyle: el.italic ? "italic" : undefined,
           fontFamily: el.font === "head" ? spec.fontHeadCss : spec.fontBodyCss,
           lineHeight: el.lineSpacing ?? 1.15,
-          letterSpacing: el.charSpacing
-            ? `${el.charSpacing * PT}cqw`
-            : undefined,
+          letterSpacing:
+            el.letterSpacing != null
+              ? `${el.letterSpacing}em`
+              : el.charSpacing
+              ? `${el.charSpacing * PT}cqw`
+              : undefined,
           overflow: "hidden",
         }}
       >

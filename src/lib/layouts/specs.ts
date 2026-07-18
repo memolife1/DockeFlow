@@ -118,6 +118,94 @@ function card(
   };
 }
 
+// The slide's main headline. Wraps txt() with the template's typography DNA
+// (lib/types.ts TemplateTheme -> ThemeSpec, set once per template in
+// buildThemeSpec) so every layout's title picks up the same weight, letter
+// spacing, and size scale without each of the ~18 layouts re-deriving it —
+// this is what makes "Sales Motion" read as bold/tight/oversized and
+// "Editorial" read as restrained, even with identical slide content.
+function titleText(
+  ctx: ResolveCtx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  text: string,
+  size: number,
+  color: ColorRole,
+  extra: Partial<TextEl> = {},
+): TextEl {
+  const spec = ctx.spec;
+  const sizeMultiplier = spec?.headlineSizeMultiplier ?? 1;
+  return txt(x, y, w, h, text, size * sizeMultiplier, color, {
+    ...(spec?.headlineWeight ? { weight: spec.headlineWeight } : {}),
+    ...(spec?.headlineLetterSpacing != null
+      ? { letterSpacing: spec.headlineLetterSpacing }
+      : {}),
+    ...extra,
+  });
+}
+
+// Card treatment driven by the template's cardStyle DNA. Every card-shaped
+// element in the deck (KPI tiles, comparison panels, team tiles, ...) is
+// built through card(), so branching here is enough to make "Sales Motion"
+// (filled, accent-colored tiles) look structurally different from
+// "Editorial" (thin bordered outlines) rather than just differently
+// colored.
+function cardStyleOf(ctx: ResolveCtx | undefined): "flat" | "bordered" | "elevated" | "filled" {
+  return ctx?.spec?.cardStyle ?? "elevated";
+}
+
+function borderWeight(ctx: ResolveCtx | undefined): number {
+  return ctx?.spec?.accentLineWeight ?? 1;
+}
+
+// A single-tone card (KPI tiles, team tiles) whose fill/border/shadow follow
+// the template's cardStyle. `onFill`/`onLabel` are the color roles to use for
+// the card's primary and secondary text — "filled" needs light-on-accent,
+// every other style keeps the caller's usual dark-on-light roles.
+function styledCard(
+  ctx: ResolveCtx | undefined,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  extra: Partial<ShapeEl> = {},
+): { shape: ShapeEl; onFill: ColorRole; onLabel: ColorRole } {
+  const style = cardStyleOf(ctx);
+  if (style === "filled") {
+    return {
+      shape: card(x, y, w, h, "primary", { radius: 0.12, ...extra }),
+      onFill: "textOnDark",
+      onLabel: "textOnDarkMuted",
+    };
+  }
+  if (style === "bordered") {
+    return {
+      shape: card(x, y, w, h, "surface", {
+        radius: 0.12,
+        line: { color: "primary", width: borderWeight(ctx) },
+        ...extra,
+      }),
+      onFill: "primary",
+      onLabel: "textMuted",
+    };
+  }
+  if (style === "flat") {
+    return {
+      shape: card(x, y, w, h, "surfaceAlt", { radius: 0.12, ...extra }),
+      onFill: "primary",
+      onLabel: "textMuted",
+    };
+  }
+  // elevated (default) — the original treatment.
+  return {
+    shape: card(x, y, w, h, "surfaceAlt", { radius: 0.12, shadow: true, ...extra }),
+    onFill: "primary",
+    onLabel: "textMuted",
+  };
+}
+
 // Icon-or-marker bullet rows. Marker is a small rounded tile; when the slide
 // provides a semantic icon name it renders as an icon in both outputs.
 function bulletRows(
@@ -248,41 +336,47 @@ function decorationEls(
   const style = ctx?.spec?.decorationStyle ?? seededVariant(seed);
   if (style === "none" || style === "minimal") return [];
 
+  let els: LayoutEl[];
+
   if (style === "geometric") {
-    const els: LayoutEl[] = [
+    els = [
       { kind: "shape", shape: "rect", x: W - 4.1, y: -1.5, w: 2.2, h: 2.2, fill: accentRole, transparency: 65 },
       { kind: "shape", shape: "rect", x: W - 2.9, y: 3.6, w: 3.0, h: 3.0, fill: accentRole, transparency: 82 },
       { kind: "shape", shape: "rect", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: accentRole },
     ];
-    return els;
-  }
-
-  if (style === "lines") {
-    const els: LayoutEl[] = [
-      { kind: "shape", shape: "rect", x: W - 3.0, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 70 },
-      { kind: "shape", shape: "rect", x: W - 1.8, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 82 },
-      { kind: "shape", shape: "rect", x: W - 0.6, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 88 },
+  } else if (style === "lines") {
+    // Stripe thickness follows the template's accentLineWeight DNA — a
+    // heavier-weight template (e.g. "Sales Motion") reads as bolder here too.
+    const lineW = 0.08 * borderWeight(ctx);
+    els = [
+      { kind: "shape", shape: "rect", x: W - 3.0, y: -0.5, w: lineW, h: H + 1, fill: accentRole, transparency: 70 },
+      { kind: "shape", shape: "rect", x: W - 1.8, y: -0.5, w: lineW, h: H + 1, fill: accentRole, transparency: 82 },
+      { kind: "shape", shape: "rect", x: W - 0.6, y: -0.5, w: lineW, h: H + 1, fill: accentRole, transparency: 88 },
     ];
-    return els;
-  }
-
-  if (style === "corners") {
-    const els: LayoutEl[] = [
+  } else if (style === "corners") {
+    els = [
       { kind: "shape", shape: "rect", x: W - 1.2, y: 0, w: 1.2, h: 0.12, fill: accentRole, transparency: 40 },
       { kind: "shape", shape: "rect", x: W - 0.12, y: 0, w: 0.12, h: 1.2, fill: accentRole, transparency: 40 },
       { kind: "shape", shape: "rect", x: 0, y: H - 0.12, w: 1.2, h: 0.12, fill: accentRole, transparency: 40 },
       { kind: "shape", shape: "rect", x: 0, y: H - 1.2, w: 0.12, h: 1.2, fill: accentRole, transparency: 40 },
     ];
-    return els;
+  } else {
+    // Default: "bubbles" — the layout's original decoration.
+    els = [
+      { kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: accentRole, transparency: 82 },
+      { kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: accentRole, transparency: 60 },
+      { kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: accentRole },
+    ];
   }
 
-  // Default: "bubbles" — the layout's original decoration.
-  const els: LayoutEl[] = [
-    { kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: accentRole, transparency: 82 },
-    { kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: accentRole, transparency: 60 },
-    { kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: accentRole },
-  ];
-  return els;
+  const opacity = ctx?.spec?.decorationOpacity;
+  if (opacity == null) return els;
+  return els.map((el) => {
+    if (el.kind !== "shape") return el;
+    const baseOpacity = (100 - (el.transparency ?? 0)) / 100;
+    const scaled = Math.max(0, Math.min(1, baseOpacity * opacity));
+    return { ...el, transparency: Math.round(100 - scaled * 100) };
+  });
 }
 
 const titleHero: LayoutFn = (s, ctx) => {
@@ -297,7 +391,7 @@ const titleHero: LayoutFn = (s, ctx) => {
   const mark = brandMark(hasImage ? "textOnDark" : "primaryTint", ctx);
   if (mark) els.push(mark);
   els.push(
-    txt(M, 3.35, 8.6, 2.15, s.title, 40, "textOnDark", {
+    titleText(ctx, M, 3.35, 8.6, 2.15, s.title, 40, "textOnDark", {
       bold: true,
       font: "head",
       valign: "bottom",
@@ -323,7 +417,7 @@ const titleSplit: LayoutFn = (s, ctx) => {
   const els: LayoutEl[] = [
     box(0, 0, panelW, H, "dark"),
     ...(splitMark ? [splitMark] : []),
-    txt(M, 2.9, panelW - M - 0.35, 2.5, s.title, 32, "textOnDark", {
+    titleText(ctx, M, 2.9, panelW - M - 0.35, 2.5, s.title, 32, "textOnDark", {
       bold: true,
       font: "head",
       valign: "bottom",
@@ -352,7 +446,7 @@ const agenda: LayoutFn = (s, ctx) => {
   const colW = twoCol ? (W - M * 2 - 0.7) / 2 : W - M * 2;
   const rowH = 0.92;
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 0.95, s.title || "Agenda", 32, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 0.95, s.title || "Agenda", 32, "textBody", {
       bold: true,
       font: "head",
       shrink: true,
@@ -393,7 +487,7 @@ const sectionDivider: LayoutFn = (s, ctx) => {
       font: "head",
       valign: "middle",
     }),
-    txt(M, 3.4, W - M * 2 - 1, 1.9, s.title, 36, "textOnDark", {
+    titleText(ctx, M, 3.4, W - M * 2 - 1, 1.9, s.title, 36, "textOnDark", {
       bold: true,
       font: "head",
       valign: "top",
@@ -415,7 +509,7 @@ const sectionDivider: LayoutFn = (s, ctx) => {
 const contentBullets: LayoutFn = (s, ctx) => {
   const bullets = s.content.filter(Boolean);
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.4, s.title, 32, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.4, s.title, 32, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -444,7 +538,7 @@ const contentImage = (side: "left" | "right"): LayoutFn => (s, ctx) => {
       query: s.imageQuery,
       fallback: "surfaceAlt",
     },
-    txt(textX, 1.0, textW, 2.0, s.title, 26, "textBody", {
+    titleText(ctx, textX, 1.0, textW, 2.0, s.title, 26, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -471,8 +565,9 @@ const twoColumnCompare: LayoutFn = (s, ctx) => {
   const cardH = H - top - 0.85;
   const gap = 0.5;
   const colW = (W - M * 2 - gap) / 2;
+  const style = cardStyleOf(ctx);
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -482,7 +577,13 @@ const twoColumnCompare: LayoutFn = (s, ctx) => {
   cols.slice(0, 2).forEach((col, i) => {
     const x = M + i * (colW + gap);
     const dark = i === 1;
-    els.push(card(x, top, colW, cardH, dark ? "dark" : "surfaceAlt", { shadow: true, radius: 0.12 }));
+    els.push(
+      card(x, top, colW, cardH, dark ? "dark" : "surfaceAlt", {
+        radius: 0.12,
+        shadow: style === "elevated" || style === "filled",
+        line: style === "bordered" ? { color: "primary", width: borderWeight(ctx) } : undefined,
+      }),
+    );
     els.push(
       txt(x + 0.45, top + 0.4, colW - 0.9, 0.5, col.heading, 15, dark ? "textOnDark" : "primary", {
         bold: true,
@@ -514,7 +615,7 @@ const statKpi: LayoutFn = (s, ctx) => {
   const top = 2.5;
   const cardH = 3.5;
   const els: LayoutEl[] = [
-    txt(M, 0.85, W - M * 2, 1.3, s.title, 32, "textBody", {
+    titleText(ctx, M, 0.85, W - M * 2, 1.3, s.title, 32, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -523,9 +624,10 @@ const statKpi: LayoutFn = (s, ctx) => {
   ];
   stats.forEach((st, i) => {
     const x = M + i * (cardW + gap);
-    els.push(card(x, top, cardW, cardH, "surfaceAlt", { shadow: true, radius: 0.12 }));
+    const { shape, onFill, onLabel } = styledCard(ctx, x, top, cardW, cardH);
+    els.push(shape);
     els.push(
-      txt(x + 0.2, top + 0.65, cardW - 0.4, 1.35, st.value, 44, "primary", {
+      txt(x + 0.2, top + 0.65, cardW - 0.4, 1.35, st.value, 44, onFill, {
         bold: true,
         font: "head",
         align: "center",
@@ -534,7 +636,7 @@ const statKpi: LayoutFn = (s, ctx) => {
       }),
     );
     els.push(
-      txt(x + 0.35, top + 2.2, cardW - 0.7, 1.0, st.label, 11, "textMuted", {
+      txt(x + 0.35, top + 2.2, cardW - 0.7, 1.0, st.label, 11, onLabel, {
         align: "center",
         valign: "top",
         lineSpacing: 1.2,
@@ -554,14 +656,15 @@ const timelineHorizontal: LayoutFn = (s, ctx) => {
   const lineY = 4.0;
   const startX = M + 0.4;
   const span = W - M * 2 - 0.8;
+  const lineH = 0.045 * (borderWeight(ctx) / 1);
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
       shrink: true,
     }),
-    box(startX, lineY - 0.02, span, 0.045, "neutralTint"),
+    box(startX, lineY - lineH / 2, span, lineH, "neutralTint"),
   ];
   items.forEach((it, i) => {
     const cx = startX + (n === 1 ? span / 2 : (span * i) / (n - 1));
@@ -602,7 +705,7 @@ const processSteps: LayoutFn = (s, ctx) => {
   const stepW = (W - M * 2 - gap * (n - 1)) / n;
   const top = 2.9;
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -656,7 +759,7 @@ const funnel: LayoutFn = (s, ctx) => {
   const cx = (W - 3.6) / 2 + 0.35; // funnel center, leaving right rail for values
   const fills: ColorRole[] = ["primary", "primaryShade", "dark", "accent"];
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -702,7 +805,7 @@ const swotMatrix: LayoutFn = (s, ctx) => {
   const qw = (W - M * 2 - gap) / 2;
   const qh = (H - top - 0.75 - gap) / 2;
   const els: LayoutEl[] = [
-    txt(M, 0.75, W - M * 2, 1.0, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.75, W - M * 2, 1.0, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       shrink: true,
@@ -745,7 +848,7 @@ const chartFocus: LayoutFn = (s, ctx) => {
   const bullets = s.content.filter(Boolean).slice(0, 3);
   const chartW = (W - M * 2) * 0.62;
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       lineSpacing: 1.05,
@@ -775,12 +878,13 @@ const teamGrid: LayoutFn = (s, ctx) => {
   const top = 2.3;
   const cardH = 3.9;
   const els: LayoutEl[] = [
-    txt(M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
+    titleText(ctx, M, 0.8, W - M * 2, 1.15, s.title, 30, "textBody", {
       bold: true,
       font: "head",
       shrink: true,
     }),
   ];
+  const teamCardStyle = cardStyleOf(ctx);
   team.forEach((m, i) => {
     const x = M + i * (cardW + gap);
     const initials = m.name
@@ -790,7 +894,16 @@ const teamGrid: LayoutFn = (s, ctx) => {
       .slice(0, 2)
       .join("")
       .toUpperCase();
-    els.push(card(x, top, cardW, cardH, "surfaceAlt", { shadow: true, radius: 0.12 }));
+    els.push(
+      card(x, top, cardW, cardH, "surfaceAlt", {
+        radius: 0.12,
+        shadow: teamCardStyle === "elevated" || teamCardStyle === "filled",
+        line:
+          teamCardStyle === "bordered"
+            ? { color: "primary", width: borderWeight(ctx) }
+            : undefined,
+      }),
+    );
     const avatar = Math.min(cardW - 1.1, 1.3);
     els.push({ kind: "shape", shape: "ellipse", x: x + (cardW - avatar) / 2, y: top + 0.5, w: avatar, h: avatar, fill: "primaryTint" });
     els.push(
@@ -827,7 +940,7 @@ const closingCta: LayoutFn = (s, ctx) => {
   const closingMark = brandMark("primaryTint", ctx);
   const els: LayoutEl[] = [
     ...(closingMark ? [closingMark] : []),
-    txt(M, 1.35, W - M * 2 - 1.5, 1.9, s.title, 34, "textOnDark", {
+    titleText(ctx, M, 1.35, W - M * 2 - 1.5, 1.9, s.title, 34, "textOnDark", {
       bold: true,
       font: "head",
       valign: "bottom",
@@ -861,7 +974,7 @@ const imageFullBleed: LayoutFn = (s, ctx) => {
   const els: LayoutEl[] = [
     { kind: "image", x: 0, y: 0, w: W, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" },
     box(0, 4.5, W, 3.0, "dark", { transparency: 45 }),
-    txt(M, 5.0, W - M * 2, 1.3, s.title, 38, "textOnDark", {
+    titleText(ctx, M, 5.0, W - M * 2, 1.3, s.title, 38, "textOnDark", {
       bold: true,
       font: "head",
       valign: "top",
@@ -889,7 +1002,7 @@ const imageTwoColumn: LayoutFn = (s, ctx) => {
     { kind: "image", x: 0, y: 0, w: 6.5, h: 6.5, url: urls[0], query: s.imageQuery, fallback: "surfaceAlt" },
     { kind: "image", x: 6.83, y: 0, w: 6.5, h: 6.5, url: urls[1], query: s.imageQuery, fallback: "surfaceAlt" },
     box(0, 6.6, W, 0.9, "dark"),
-    txt(0, 6.6, W, 0.9, s.title, 22, "textOnDark", {
+    titleText(ctx, 0, 6.6, W, 0.9, s.title, 22, "textOnDark", {
       bold: true,
       font: "head",
       align: "center",
@@ -967,7 +1080,7 @@ const imageShowcase: LayoutFn = (s, ctx) => {
   }
   els.push(box(0, H - 2.4, leftW, 2.4, "dark", { transparency: 35 }));
   els.push(
-    txt(0.5, H - 1.9, leftW - 1.0, 1.4, s.title, 28, "textOnDark", {
+    titleText(ctx, 0.5, H - 1.9, leftW - 1.0, 1.4, s.title, 28, "textOnDark", {
       bold: true,
       font: "head",
       valign: "bottom",

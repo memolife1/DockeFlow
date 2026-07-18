@@ -71,6 +71,28 @@ function seedFraction(seed: string): number {
   return (Math.abs(hash) % 1000) / 1000;
 }
 
+// The richest color in a CSS gradient string — used as the solid fallback
+// wherever a flat hex is required (PPTX slide backgrounds can't render CSS
+// gradients, so this becomes the deck's actual "surface" role color; the
+// HTML preview then paints the real gradient as a cosmetic layer on top of
+// slides using that role).
+function dominantGradientColor(gradient: string): string | undefined {
+  const matches = gradient.match(/#([0-9A-Fa-f]{6})/g);
+  if (!matches || matches.length === 0) return undefined;
+  return matches[matches.length - 1].replace("#", "").toUpperCase();
+}
+
+// A template's own literal "circles" decoration name maps onto the layout
+// system's existing "bubbles" variant (same ellipse treatment) so the
+// Inspector's Design tab picker — which only knows bubbles/geometric/
+// lines/corners/minimal/none — stays the single vocabulary for decoration.
+function templateDecorationToSpec(
+  d: TemplateTheme["decorationStyle"],
+): string | undefined {
+  if (!d) return undefined;
+  return d === "circles" ? "bubbles" : d;
+}
+
 export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): ThemeSpec {
   const brand = t.brand;
   const primary = normHex(overrides?.accent ?? brand?.roles?.primary ?? t.accent, "2563EB");
@@ -113,22 +135,68 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
   if (contrast(effPrimary, WHITE) < 2.2)
     effPrimary = mix(effPrimary, NEAR_BLACK, 0.35);
 
-  const surface = normHex(overrides?.surface ?? brand?.roles?.surface, WHITE);
-  const textBody = normHex(overrides?.ink, "2B3038");
+  let surface = normHex(overrides?.surface ?? brand?.roles?.surface, WHITE);
+  let surfaceAlt = mix(effPrimary, WHITE, 0.945);
+  let neutralTint = "F2F4F8";
+  let textBody = normHex(overrides?.ink, "2B3038");
+  let textMuted = "666D7A";
+
+  // Gradient-background templates ("Midnight Navy", "Cobalt Pro", etc.) put
+  // every ordinary content slide on the deck's signature dark/vivid canvas
+  // instead of the usual white — so the "surface" role and everything read
+  // against it (body text, muted text, card tints) need to be recomputed for
+  // that background exactly like the "dark" role already is above. Skipped
+  // when the user has picked their own surface color (Design tab) or a
+  // background photo — those are deliberate overrides of the template.
+  const usingTemplateGradient =
+    !overrides?.surface &&
+    !overrides?.backgroundImageUri &&
+    (t.backgroundStyle === "gradient" ||
+      t.backgroundStyle === "dark-gradient" ||
+      t.backgroundStyle === "mesh") &&
+    !!t.backgroundGradient;
+  if (usingTemplateGradient) {
+    const dominant = dominantGradientColor(t.backgroundGradient!) ?? dark;
+    if (contrast(WHITE, dominant) >= 4.5) {
+      surface = dominant;
+      surfaceAlt = mix(dominant, WHITE, 0.14);
+      neutralTint = mix(dominant, WHITE, 0.1);
+      textBody = WHITE;
+      textMuted = mix(dominant, WHITE, 0.62);
+    }
+  }
+
+  // Keep primary/accent legible against whatever the deck's actual light
+  // surface ends up being — usually WHITE, but a gradient-background
+  // template (or a brand extraction) can land on a much darker one, and a
+  // template's accent can even equal its own gradient's dominant color.
+  if (contrast(effPrimary, surface) < 2.4) {
+    effPrimary =
+      contrast(WHITE, surface) >= contrast(NEAR_BLACK, surface)
+        ? mix(effPrimary, WHITE, 0.55)
+        : mix(effPrimary, NEAR_BLACK, 0.4);
+  }
+  if (contrast(accent, surface) < 2.4) {
+    accent =
+      contrast(WHITE, surface) >= contrast(NEAR_BLACK, surface)
+        ? mix(accent, WHITE, 0.55)
+        : mix(accent, NEAR_BLACK, 0.4);
+  }
+
   const colors: Record<ColorRole, string> = {
     primary: effPrimary,
     primaryTint: mix(effPrimary, WHITE, 0.9),
     primaryShade: mix(effPrimary, NEAR_BLACK, 0.32),
     dark,
     surface,
-    surfaceAlt: mix(effPrimary, WHITE, 0.945),
-    neutralTint: "F2F4F8",
+    surfaceAlt,
+    neutralTint,
     accent,
     accentTint: mix(accent, WHITE, 0.9),
     textOnDark: WHITE,
     textOnDarkMuted: mix(dark, WHITE, 0.62),
     textBody,
-    textMuted: "666D7A",
+    textMuted,
     white: WHITE,
   };
 
@@ -175,7 +243,15 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
         ? overrides.backgroundDesign
         : undefined,
     backgroundImageUri: overrides?.backgroundImageUri,
-    decorationStyle: overrides?.decorationStyle,
+    decorationStyle: overrides?.decorationStyle ?? templateDecorationToSpec(t.decorationStyle),
+    backgroundStyle: t.backgroundStyle,
+    backgroundGradient: usingTemplateGradient ? t.backgroundGradient : undefined,
+    headlineWeight: t.headlineWeight,
+    headlineLetterSpacing: t.headlineLetterSpacing,
+    headlineSizeMultiplier: t.headlineSizeMultiplier,
+    decorationOpacity: t.decorationOpacity,
+    cardStyle: t.cardStyle,
+    accentLineWeight: t.accentLineWeight,
   };
 }
 
@@ -187,7 +263,12 @@ export function applySlideDesign(spec: ThemeSpec, sd: Slide["slideDesign"]): The
   if (!sd) return spec;
   const next: ThemeSpec = { ...spec, colors: { ...spec.colors } };
 
-  if (sd.backgroundColor) next.colors.surface = normHex(sd.backgroundColor, next.colors.surface);
+  if (sd.backgroundColor) {
+    next.colors.surface = normHex(sd.backgroundColor, next.colors.surface);
+    // An explicit per-slide color is a deliberate override — stop painting
+    // the template's gradient behind it.
+    next.backgroundGradient = undefined;
+  }
   if (sd.headlineColor) next.headlineOverride = normHex(sd.headlineColor, "");
   if (sd.bodyColor) next.bodyOverride = normHex(sd.bodyColor, "");
   if (sd.accentColor) {

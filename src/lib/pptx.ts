@@ -173,6 +173,14 @@ function renderText(s: pptxgen.Slide, el: TextEl, spec: ThemeSpec) {
       : el.color === "textBody" && spec.bodyOverride
       ? spec.bodyOverride
       : spec.colors[el.color];
+  // pptxgenjs has no true variable font-weight — a template's 700/800/900
+  // headlineWeight DNA all collapse to "bold" here, same as the preview's
+  // CSS font-weight collapses visually once past ~700 on most typefaces.
+  // letterSpacing (em, from the template DNA) converts to pptx's pt-based
+  // charSpacing using this element's own font size; a raw charSpacing value
+  // (rare, hand-set elsewhere) only applies when no DNA letterSpacing exists.
+  const charSpacing =
+    el.letterSpacing != null ? el.letterSpacing * el.size : el.charSpacing;
   // Fresh options object per call — pptxgenjs mutates them.
   s.addText(el.text, {
     x: el.x,
@@ -182,13 +190,13 @@ function renderText(s: pptxgen.Slide, el: TextEl, spec: ThemeSpec) {
     margin: 0,
     fontFace: el.font === "head" ? spec.fontHead : spec.fontBody,
     fontSize: el.size,
-    bold: el.bold,
+    bold: el.bold || el.weight != null,
     italic: el.italic,
     color: resolvedColor,
     align: el.align ?? "left",
     valign: el.valign ?? "top",
     lineSpacingMultiple: el.lineSpacing,
-    charSpacing: el.charSpacing,
+    charSpacing,
     fit: el.shrink ? "shrink" : undefined,
     wrap: true,
   });
