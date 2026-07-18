@@ -11,7 +11,6 @@ import {
   SYSTEM_PROMPT,
   buildUserMessage,
   modelSlidesToDrafts,
-  hasRequiredLayouts,
   type ModelSlide,
 } from "@/lib/prompt";
 import {
@@ -75,16 +74,42 @@ async function generateWithClaude(
   }
 }
 
-// Safety net: if the model (or fallback engine, in an unusual input) doesn't
-// include the required stat_kpi / visual layout, splice a synthesized one in
-// so every deck meets the "premium template" composition bar.
-function ensureRequiredLayouts(drafts: DraftSlide[]): DraftSlide[] {
-  const { hasStat, hasVisual } = hasRequiredLayouts(drafts);
-  const out = [...drafts];
-  const insertAt = Math.max(1, out.length - 2);
+// A short, concrete image search built from a title's meatiest words —
+// shared by the missing-imageQuery fallback (2B) and the layout-diversity
+// swap-in below (1D), so a slide that gains an image layout after the fact
+// always has something real to search for.
+function fallbackImageQuery(title: string): string {
+  const words = title
+    .replace(/[^\w\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 4);
+  return (words.slice(0, 4).join(" ") || title).toLowerCase();
+}
 
-  if (!hasStat) {
-    out.splice(insertAt, 0, {
+const DATA_VIZ_LAYOUTS = new Set(["stat_kpi", "chart_focus"]);
+const IMAGE_HEAVY_LAYOUTS = new Set([
+  "content_image_right",
+  "content_image_left",
+  "image_full_bleed",
+  "image_two_column",
+  "image_four_grid",
+  "image_showcase",
+]);
+const STRUCTURED_LAYOUTS = new Set(["timeline_horizontal", "process_steps", "funnel"]);
+const COMPARISON_LAYOUTS = new Set(["two_column_compare", "swot_matrix"]);
+
+// Safety net: guarantees every deck includes at least one slide from each of
+// the four "premium template" composition categories (data viz, image-heavy,
+// structured, comparison), and — for decks of 8+ slides — a minimum spread
+// of distinct layout types, by converting surplus duplicate content_bullets
+// slides into content_image_right/left rather than inventing structured
+// data (chart/timeline/columns) it has no real content for.
+function enforceLayoutDiversity(drafts: DraftSlide[], allowImages: boolean): DraftSlide[] {
+  let out = [...drafts];
+  const layoutIds = () => out.map((d) => d.layoutType as string);
+
+  if (!layoutIds().some((id) => DATA_VIZ_LAYOUTS.has(id))) {
+    out.splice(Math.max(1, out.length - 2), 0, {
       title: "The numbers behind the recommendation",
       content: [],
       stats: [
@@ -95,7 +120,7 @@ function ensureRequiredLayouts(drafts: DraftSlide[]): DraftSlide[] {
       layoutType: "stat_kpi",
     });
   }
-  if (!hasVisual) {
+  if (!layoutIds().some((id) => STRUCTURED_LAYOUTS.has(id))) {
     out.splice(Math.max(1, out.length - 1), 0, {
       title: "The plan, in three checkpoints",
       content: [],
@@ -108,7 +133,71 @@ function ensureRequiredLayouts(drafts: DraftSlide[]): DraftSlide[] {
       layoutType: "timeline_horizontal",
     });
   }
+  if (!layoutIds().some((id) => COMPARISON_LAYOUTS.has(id))) {
+    out.splice(Math.max(1, out.length - 3), 0, {
+      title: "Two paths forward — and the tradeoff of each",
+      content: [],
+      columns: [
+        { heading: "Stay the course", points: ["Lower short-term disruption", "Familiar to the team"] },
+        { heading: "Make the change", points: ["Faster path to the outcome", "Requires upfront investment"] },
+      ],
+      speakerNotes: "Frame this as the real decision on the table, not a hypothetical.",
+      layoutType: "two_column_compare",
+    });
+  }
+  if (allowImages && !layoutIds().some((id) => IMAGE_HEAVY_LAYOUTS.has(id))) {
+    const insertAt = Math.min(out.length - 1, 3);
+    const title = "What this looks like in practice";
+    out.splice(insertAt, 0, {
+      title,
+      content: ["A closer look at the moment this plan is built for."],
+      imageQuery: fallbackImageQuery(title),
+      speakerNotes: "Use this as a visual anchor before moving into the evidence.",
+      layoutType: "content_image_right",
+    });
+  }
+
+  // Longer decks should visibly rotate through more than 3-4 layout types.
+  // Convert surplus duplicate content_bullets slides into image layouts
+  // (never touching the first or last slide) rather than leaving the deck
+  // reading as one repeated template.
+  if (allowImages && out.length >= 8) {
+    const MIN_DISTINCT = 6;
+    let side: "content_image_left" | "content_image_right" = "content_image_left";
+    for (let i = 1; i < out.length - 1 && new Set(layoutIds()).size < MIN_DISTINCT; i++) {
+      if (out[i].layoutType !== "content_bullets") continue;
+      if (out[i - 1]?.layoutType === side || out[i + 1]?.layoutType === side) continue;
+      out[i] = { ...out[i], layoutType: side, imageQuery: fallbackImageQuery(out[i].title) };
+      side = side === "content_image_left" ? "content_image_right" : "content_image_left";
+    }
+  }
+
+  // Re-check adjacency once more — the inserts/swaps above can create a
+  // fresh same-layout pair even though the original draft list had none.
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].layoutType === out[i - 1].layoutType && out[i].layoutType !== "content_bullets") {
+      out[i] = { ...out[i], layoutType: "content_bullets" };
+    }
+  }
+
   return out;
+}
+
+// Any image-capable layout that came back from generation without an
+// imageQuery would otherwise render its solid-color fallback forever —
+// give it a real (if generic) search derived from the slide's own title.
+function fillMissingImageQueries(drafts: DraftSlide[]): void {
+  for (const d of drafts) {
+    if (!IMAGE_HEAVY_LAYOUTS.has(d.layoutType as string)) continue;
+    if (d.imageQuery || (Array.isArray(d.imageQueries) && d.imageQueries.length)) continue;
+    d.imageQuery = fallbackImageQuery(d.title);
+    console.warn(
+      "[Generate] Missing imageQuery for",
+      d.layoutType,
+      "— using fallback:",
+      d.imageQuery,
+    );
+  }
 }
 
 // Resolve imageQuery -> a real Pexels URL for image-zone layouts. Best-effort:
@@ -120,30 +209,62 @@ const IMAGE_LAYOUTS = new Set([
   "image_full_bleed",
 ]);
 
+// Logged once per request rather than once per photo, so a missing key
+// doesn't spam the same line for every image-capable slide.
+let warnedNoPexelsKey = false;
+
+async function fetchPexelsImage(query: string): Promise<string | undefined> {
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) {
+    if (!warnedNoPexelsKey) {
+      console.error("[Pexels] No API key configured (PEXELS_API_KEY) — stock images will not load.");
+      warnedNoPexelsKey = true;
+    }
+    return undefined;
+  }
+  const trimmed = query.trim();
+  if (trimmed.length < 3) {
+    console.warn("[Pexels] Query too short, skipping:", query);
+    return undefined;
+  }
+
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(trimmed)}&per_page=5&orientation=landscape`,
+      { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok) {
+      console.error("[Pexels] API error:", res.status, await res.text().catch(() => ""));
+      return undefined;
+    }
+    const data = (await res.json()) as {
+      photos?: { src?: { landscape?: string; large2x?: string; large?: string } }[];
+    };
+    const photos = data.photos ?? [];
+    if (photos.length === 0) {
+      console.warn("[Pexels] No results for query:", trimmed);
+      return undefined;
+    }
+    // Pick from the top results (not always #1) so decks don't converge on
+    // the same handful of stock photos for common queries.
+    const photo = photos[Math.floor(Math.random() * Math.min(photos.length, 5))];
+    const url = photo?.src?.landscape ?? photo?.src?.large2x ?? photo?.src?.large;
+    console.log("[Pexels] Found image for:", trimmed, "->", url?.slice(0, 60));
+    return url;
+  } catch (err) {
+    console.error("[Pexels] Fetch error for query:", trimmed, err);
+    return undefined;
+  }
+}
+
 async function resolveImages(drafts: DraftSlide[]): Promise<void> {
-  const key = process.env.PEXELS_API_KEY;
-  if (!key) return;
   await Promise.all(
     drafts.map(async (d) => {
       if (!IMAGE_LAYOUTS.has(d.layoutType as string) || !d.imageQuery) return;
       // Already satisfied by the user's own photo library — never fetch stock.
       if (d.imageQuery === "USER_PHOTO" || d.imageUrl) return;
-      try {
-        const res = await fetch(
-          `https://api.pexels.com/v1/search?query=${encodeURIComponent(
-            d.imageQuery,
-          )}&per_page=1&orientation=landscape`,
-          { headers: { Authorization: key } },
-        );
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          photos?: { src?: { landscape?: string; large2x?: string } }[];
-        };
-        const url = data.photos?.[0]?.src?.landscape ?? data.photos?.[0]?.src?.large2x;
-        if (url) d.imageUrl = url;
-      } catch {
-        /* leave the layout's fallback color in place */
-      }
+      const url = await fetchPexelsImage(d.imageQuery);
+      if (url) d.imageUrl = url;
     }),
   );
 }
@@ -157,8 +278,6 @@ const MULTI_IMAGE_ZONES: Record<string, number> = {
 };
 
 async function resolveMultiImages(drafts: DraftSlide[]): Promise<void> {
-  const key = process.env.PEXELS_API_KEY;
-  if (!key) return;
   await Promise.all(
     drafts.map(async (d) => {
       const zones = MULTI_IMAGE_ZONES[d.layoutType as string];
@@ -166,25 +285,7 @@ async function resolveMultiImages(drafts: DraftSlide[]): Promise<void> {
         ? (d.imageQueries as unknown[]).map(String).filter(Boolean)
         : [];
       if (!zones || queries.length === 0) return;
-      const urls = await Promise.all(
-        queries.slice(0, zones).map(async (q) => {
-          try {
-            const res = await fetch(
-              `https://api.pexels.com/v1/search?query=${encodeURIComponent(
-                q,
-              )}&per_page=1&orientation=landscape`,
-              { headers: { Authorization: key } },
-            );
-            if (!res.ok) return undefined;
-            const data = (await res.json()) as {
-              photos?: { src?: { landscape?: string; large2x?: string } }[];
-            };
-            return data.photos?.[0]?.src?.landscape ?? data.photos?.[0]?.src?.large2x;
-          } catch {
-            return undefined;
-          }
-        }),
-      );
+      const urls = await Promise.all(queries.slice(0, zones).map(fetchPexelsImage));
       d.imageUrls = urls.filter((u): u is string => !!u);
     }),
   );
@@ -284,8 +385,9 @@ export async function POST(req: Request) {
     await new Promise((r) => setTimeout(r, 800));
   }
 
-  drafts = ensureRequiredLayouts(drafts);
+  drafts = enforceLayoutDiversity(drafts, body.imageSource !== "none");
   if (input.targetSlideCount) drafts = padOrTrimToTarget(drafts, input.targetSlideCount);
+  fillMissingImageQueries(drafts);
   resolveUserImages(drafts, input.userImageUris);
   if (body.useStockImages) {
     await resolveImages(drafts);

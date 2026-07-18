@@ -78,6 +78,7 @@ export async function exportDeckToPptx(
       total,
       deckTitle: presentation.title,
       spec,
+      showDefaultBrandMark: options.planWatermark,
     });
     for (const el of resolved.elements) {
       if (el.kind === "icon") {
@@ -101,6 +102,7 @@ export async function exportDeckToPptx(
       total,
       deckTitle: presentation.title,
       spec,
+      showDefaultBrandMark: options.planWatermark,
     });
     const s = pptx.addSlide();
     s.background = { color: spec.colors[resolved.background] };

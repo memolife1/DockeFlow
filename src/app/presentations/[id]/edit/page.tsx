@@ -12,11 +12,14 @@ import { Logo } from "@/components/brand/Logo";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Badge, Spinner } from "@/components/ui/Misc";
 import { ExportDialog } from "@/components/editor/ExportDialog";
+import { useSubscription } from "@/lib/useSubscription";
 import {
   IconArrowLeft,
   IconPlay,
   IconDownload,
   IconCheck,
+  IconSettings,
+  IconX,
 } from "@/components/ui/icons";
 
 export default function EditorPage({
@@ -41,11 +44,13 @@ export default function EditorPage({
     getBrandLogos,
   } = useStore();
 
+  const { subscription } = useSubscription();
   const presentation = getPresentation(id);
   const slides = slidesFor(id);
   const [selectedId, setSelectedId] = useState<string>("");
   const [exportOpen, setExportOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
 
   const uploaded = useMemo(
     () => templates.filter((t) => t.sourceType === "uploaded"),
@@ -170,7 +175,7 @@ export default function EditorPage({
         </div>
 
         {/* Canvas */}
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-center overflow-auto p-6 lg:p-10">
+        <div className="flex min-w-0 flex-1 flex-col items-center justify-start overflow-auto p-4 pb-28 sm:p-6 md:justify-center md:pb-6 lg:p-10">
           {selected ? (
             <div className="w-full max-w-3xl">
               <div className="overflow-hidden rounded-xl border border-line bg-white shadow-raised">
@@ -182,6 +187,7 @@ export default function EditorPage({
                   total={slides.length}
                   logoWatermark={logoWatermark}
                   logoDataUri={logoDataUri}
+                  showDefaultBrandMark={subscription.features.watermark}
                 />
               </div>
               <p className="mt-3 text-center text-[12px] text-ink-muted">
@@ -194,7 +200,7 @@ export default function EditorPage({
           )}
         </div>
 
-        {/* Inspector */}
+        {/* Inspector — desktop */}
         <div className="hidden w-80 shrink-0 lg:block">
           {selected && (
             <Inspector
@@ -222,6 +228,85 @@ export default function EditorPage({
           )}
         </div>
       </div>
+
+      {/* Mobile slide rail — horizontal strip fixed to the bottom */}
+      <div className="fixed inset-x-0 bottom-0 z-30 h-24 border-t border-line bg-paper md:hidden">
+        <SlideRail
+          slides={slides}
+          theme={theme}
+          themeOverrides={presentation.themeOverrides}
+          selectedId={selected?.id ?? ""}
+          onSelect={setSelectedId}
+          onAdd={() => {
+            const s = addSlide(id, selected?.orderIndex);
+            setSelectedId(s.id);
+            flashSaved();
+          }}
+          onReorder={(from, to) => {
+            reorderSlides(id, from, to);
+            flashSaved();
+          }}
+          orientation="horizontal"
+        />
+      </div>
+
+      {/* Floating button to open the Design/Content drawer on mobile+tablet */}
+      {selected && (
+        <button
+          onClick={() => setMobileInspectorOpen(true)}
+          className="fixed bottom-28 right-4 z-30 flex items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-white shadow-pop lg:hidden"
+        >
+          <IconSettings className="h-4 w-4" /> Design
+        </button>
+      )}
+
+      {/* Inspector — mobile/tablet drawer */}
+      {mobileInspectorOpen && selected && (
+        <div className="fixed inset-0 z-40 flex lg:hidden">
+          <div
+            className="absolute inset-0 bg-ink/40"
+            onClick={() => setMobileInspectorOpen(false)}
+          />
+          <div className="relative ml-auto flex h-full w-full max-w-sm flex-col bg-paper shadow-pop">
+            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">
+                Edit slide
+              </span>
+              <button
+                onClick={() => setMobileInspectorOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-paper-sunk hover:text-ink"
+                aria-label="Close"
+              >
+                <IconX className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1">
+              <Inspector
+                slide={selected}
+                canDelete={slides.length > 1}
+                presentation={presentation}
+                theme={theme}
+                onChange={(patch) => {
+                  updateSlide(selected.id, patch);
+                  flashSaved();
+                }}
+                onDuplicate={() => {
+                  duplicateSlide(selected.id);
+                  flashSaved();
+                }}
+                onDelete={() => {
+                  deleteSlide(selected.id);
+                  flashSaved();
+                }}
+                onUpdatePresentation={(patch) => {
+                  updatePresentation(id, patch);
+                  flashSaved();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <ExportDialog
         open={exportOpen}

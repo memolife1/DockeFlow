@@ -24,6 +24,7 @@ export default function DashboardPage() {
     deletePresentation,
     createPresentation,
     setSlides,
+    updatePresentation,
   } = useStore();
   const [pending, setPending] = useState<Presentation | null>(null);
   const [query, setQuery] = useState("");
@@ -145,6 +146,7 @@ export default function DashboardPage() {
                   template={getTemplate(p.templateId, uploaded)}
                   onDelete={() => setPending(p)}
                   onDuplicate={() => duplicate(p)}
+                  onRename={(title) => updatePresentation(p.id, { title })}
                 />
               ))}
             </div>

@@ -125,4 +125,9 @@ export interface ResolveCtx {
   // real uploaded logo) without re-deriving it. Optional so existing callers
   // that don't need it keep working.
   spec?: ThemeSpec;
+  // Free-plan-only: hides the generic "DECKEFLOW" fallback brand mark on
+  // hero/closing slides when the deck has no user-set brand name/logo of
+  // its own. Never hides a genuine user-uploaded/extracted brand — that's
+  // a paid-plan feature that stays visible regardless of this flag.
+  showDefaultBrandMark?: boolean;
 }

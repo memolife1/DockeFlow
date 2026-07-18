@@ -23,7 +23,7 @@ const TIERS: Tier[] = [
       "Up to 4 slides",
       "3 basic templates",
       "PDF export only",
-      "Watermark on slides",
+      "DeckeFlow watermark on all slides",
     ],
     cta: "Get started free",
     href: "/signup?plan=free",
@@ -100,7 +100,7 @@ export function Pricing() {
           </h2>
         </FadeIn>
 
-        <div className="mt-14 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+        <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-5">
           {TIERS.map((tier, i) => (
             <FadeIn key={tier.name} style={{ transitionDelay: `${i * 60}ms` }}>
               <div

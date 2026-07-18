@@ -180,7 +180,7 @@ function pageFooter(ctx: ResolveCtx, onDark = false): LayoutEl[] {
 // Renders the uploaded brand's real logo image when the theme has one;
 // otherwise falls back to a text wordmark (the extracted brand name, or
 // "DECKEFLOW" for unbranded decks).
-function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl {
+function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl | null {
   if (ctx?.spec?.logoDataUri) {
     return {
       kind: "image",
@@ -192,7 +192,18 @@ function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl {
       fallback: "surface",
     };
   }
-  return txt(M, 0.55, 4, 0.32, (ctx?.spec?.brandName ?? "DeckeFlow").toUpperCase(), 11, color, {
+  if (ctx?.spec?.brandName) {
+    return txt(M, 0.55, 4, 0.32, ctx.spec.brandName.toUpperCase(), 11, color, {
+      bold: true,
+      charSpacing: 3,
+      valign: "middle",
+    });
+  }
+  // No brand of the deck's own — this is the generic DeckeFlow self-mark,
+  // shown only when the caller opts in (free plan; paid plans render none
+  // here rather than a plan-conditional swap of someone else's brand).
+  if (!ctx?.showDefaultBrandMark) return null;
+  return txt(M, 0.55, 4, 0.32, "DECKEFLOW", 11, color, {
     bold: true,
     charSpacing: 3,
     valign: "middle",
@@ -203,47 +214,73 @@ function brandMark(color: ColorRole, ctx?: ResolveCtx): LayoutEl {
 
 type LayoutFn = (s: Slide, ctx: ResolveCtx) => ResolvedSlide;
 
+// Named decoration styles a user can pick explicitly from the Inspector's
+// Design tab. "none" is excluded from the auto-rotation below (it would
+// read as "decoration failed to render" rather than a deliberate choice).
+const AUTO_DECORATION_VARIANTS = ["bubbles", "geometric", "lines", "corners", "minimal"] as const;
+
+// Deterministic pick from a string seed — same seed always yields the same
+// variant, but different decks (different titles) land on different
+// treatments by default, so two presentations don't render identically.
+function seededVariant(seed: string): (typeof AUTO_DECORATION_VARIANTS)[number] {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return AUTO_DECORATION_VARIANTS[Math.abs(hash) % AUTO_DECORATION_VARIANTS.length];
+}
+
 // Decorative shapes for the opening/closing "hero" layouts. Style is resolved
 // from the slide's effective ThemeSpec (per-slide slideDesign, layered over
-// presentation-wide themeOverrides) so it's fully configurable from the
-// Inspector's Design tab, with "none"/"minimal" removing them entirely.
-function decorationEls(ctx?: ResolveCtx): LayoutEl[] {
-  const style = ctx?.spec?.decorationStyle ?? "bubbles";
+// presentation-wide themeOverrides) when the user has picked one explicitly
+// from the Inspector's Design tab; otherwise it's deterministically derived
+// from `seed` (the slide title) so decks default to varied decoration
+// instead of every deck rendering the same "bubbles" treatment. "none"/
+// "minimal" remove the decoration entirely. `accentRole` lets callers on a
+// non-dark background (e.g. section_divider's solid "primary" fill) swap in
+// a color that actually contrasts.
+function decorationEls(
+  ctx: ResolveCtx | undefined,
+  seed: string,
+  accentRole: ColorRole = "primary",
+): LayoutEl[] {
+  const style = ctx?.spec?.decorationStyle ?? seededVariant(seed);
   if (style === "none" || style === "minimal") return [];
 
   if (style === "geometric") {
     const els: LayoutEl[] = [
-      { kind: "shape", shape: "rect", x: W - 4.1, y: -1.5, w: 2.2, h: 2.2, fill: "primary", transparency: 65 },
-      { kind: "shape", shape: "rect", x: W - 2.9, y: 3.6, w: 3.0, h: 3.0, fill: "primary", transparency: 82 },
-      { kind: "shape", shape: "rect", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" },
+      { kind: "shape", shape: "rect", x: W - 4.1, y: -1.5, w: 2.2, h: 2.2, fill: accentRole, transparency: 65 },
+      { kind: "shape", shape: "rect", x: W - 2.9, y: 3.6, w: 3.0, h: 3.0, fill: accentRole, transparency: 82 },
+      { kind: "shape", shape: "rect", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: accentRole },
     ];
     return els;
   }
 
   if (style === "lines") {
     const els: LayoutEl[] = [
-      { kind: "shape", shape: "rect", x: W - 3.0, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 70 },
-      { kind: "shape", shape: "rect", x: W - 1.8, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 82 },
-      { kind: "shape", shape: "rect", x: W - 0.6, y: -0.5, w: 0.08, h: H + 1, fill: "primary", transparency: 88 },
+      { kind: "shape", shape: "rect", x: W - 3.0, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 70 },
+      { kind: "shape", shape: "rect", x: W - 1.8, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 82 },
+      { kind: "shape", shape: "rect", x: W - 0.6, y: -0.5, w: 0.08, h: H + 1, fill: accentRole, transparency: 88 },
     ];
     return els;
   }
 
   if (style === "corners") {
     const els: LayoutEl[] = [
-      { kind: "shape", shape: "rect", x: W - 1.2, y: 0, w: 1.2, h: 0.12, fill: "primary", transparency: 40 },
-      { kind: "shape", shape: "rect", x: W - 0.12, y: 0, w: 0.12, h: 1.2, fill: "primary", transparency: 40 },
-      { kind: "shape", shape: "rect", x: 0, y: H - 0.12, w: 1.2, h: 0.12, fill: "primary", transparency: 40 },
-      { kind: "shape", shape: "rect", x: 0, y: H - 1.2, w: 0.12, h: 1.2, fill: "primary", transparency: 40 },
+      { kind: "shape", shape: "rect", x: W - 1.2, y: 0, w: 1.2, h: 0.12, fill: accentRole, transparency: 40 },
+      { kind: "shape", shape: "rect", x: W - 0.12, y: 0, w: 0.12, h: 1.2, fill: accentRole, transparency: 40 },
+      { kind: "shape", shape: "rect", x: 0, y: H - 0.12, w: 1.2, h: 0.12, fill: accentRole, transparency: 40 },
+      { kind: "shape", shape: "rect", x: 0, y: H - 1.2, w: 0.12, h: 1.2, fill: accentRole, transparency: 40 },
     ];
     return els;
   }
 
   // Default: "bubbles" — the layout's original decoration.
   const els: LayoutEl[] = [
-    { kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: "primary", transparency: 82 },
-    { kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: "primary", transparency: 60 },
-    { kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: "primary" },
+    { kind: "shape", shape: "ellipse", x: W - 4.1, y: -1.5, w: 5.6, h: 5.6, fill: accentRole, transparency: 82 },
+    { kind: "shape", shape: "ellipse", x: W - 2.6, y: 3.9, w: 3.4, h: 3.4, fill: accentRole, transparency: 60 },
+    { kind: "shape", shape: "ellipse", x: W - 3.4, y: 2.1, w: 1.15, h: 1.15, fill: accentRole },
   ];
   return els;
 }
@@ -255,9 +292,10 @@ const titleHero: LayoutFn = (s, ctx) => {
     els.push({ kind: "image", x: 0, y: 0, w: W, h: H, url: s.imageUrl, query: s.imageQuery, fallback: "dark" });
     els.push(box(0, 0, W, H, "dark", { transparency: 32 }));
   } else {
-    els.push(...decorationEls(ctx));
+    els.push(...decorationEls(ctx, s.title));
   }
-  els.push(brandMark(hasImage ? "textOnDark" : "primaryTint", ctx));
+  const mark = brandMark(hasImage ? "textOnDark" : "primaryTint", ctx);
+  if (mark) els.push(mark);
   els.push(
     txt(M, 3.35, 8.6, 2.15, s.title, 40, "textOnDark", {
       bold: true,
@@ -281,9 +319,10 @@ const titleHero: LayoutFn = (s, ctx) => {
 
 const titleSplit: LayoutFn = (s, ctx) => {
   const panelW = W * 0.38;
+  const splitMark = brandMark("textOnDark", ctx);
   const els: LayoutEl[] = [
     box(0, 0, panelW, H, "dark"),
-    brandMark("textOnDark", ctx),
+    ...(splitMark ? [splitMark] : []),
     txt(M, 2.9, panelW - M - 0.35, 2.5, s.title, 32, "textOnDark", {
       bold: true,
       font: "head",
@@ -346,6 +385,9 @@ const agenda: LayoutFn = (s, ctx) => {
 const sectionDivider: LayoutFn = (s, ctx) => {
   const num = s.sectionNumber ?? ctx.index + 1;
   const els: LayoutEl[] = [
+    // On the solid "primary" background, "dark" gives a subtle, visible
+    // accent instead of the near-invisible same-on-same of the primary role.
+    ...decorationEls(ctx, s.title, "dark"),
     txt(M, 1.35, 5, 1.7, String(num).padStart(2, "0"), 60, "primaryTint", {
       bold: true,
       font: "head",
@@ -782,8 +824,9 @@ const teamGrid: LayoutFn = (s, ctx) => {
 
 const closingCta: LayoutFn = (s, ctx) => {
   const steps = s.content.filter(Boolean).slice(0, 4);
+  const closingMark = brandMark("primaryTint", ctx);
   const els: LayoutEl[] = [
-    brandMark("primaryTint", ctx),
+    ...(closingMark ? [closingMark] : []),
     txt(M, 1.35, W - M * 2 - 1.5, 1.9, s.title, 34, "textOnDark", {
       bold: true,
       font: "head",

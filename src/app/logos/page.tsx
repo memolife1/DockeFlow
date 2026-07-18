@@ -143,7 +143,7 @@ function LogosPageInner() {
             />
           ) : (
             <div
-              className="grid grid-cols-4 gap-4 rounded-xl p-4 md:grid-cols-6"
+              className="grid grid-cols-2 gap-4 rounded-xl p-4 sm:grid-cols-4 md:grid-cols-6"
               style={{
                 backgroundImage:
                   "linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)",

@@ -438,7 +438,7 @@ const DECORATION_STYLES: { key: NonNullable<SlideDesign["decorationStyle"]>; lab
 // Layouts whose specs.ts function actually renders decorationEls() — showing
 // this picker elsewhere would be a dead control (e.g. content_bullets has no
 // decorative shapes to swap).
-const DECORATION_LAYOUTS = new Set(["title_hero"]);
+const DECORATION_LAYOUTS = new Set(["title_hero", "section_divider"]);
 
 function DesignTab({
   designScope,

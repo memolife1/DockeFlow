@@ -14,6 +14,7 @@ export function SlideRail({
   onSelect,
   onAdd,
   onReorder,
+  orientation = "vertical",
 }: {
   slides: Slide[];
   theme: TemplateTheme;
@@ -22,9 +23,41 @@ export function SlideRail({
   onSelect: (id: string) => void;
   onAdd: () => void;
   onReorder: (from: number, to: number) => void;
+  orientation?: "vertical" | "horizontal";
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  if (orientation === "horizontal") {
+    return (
+      <div className="thin-scroll flex h-full items-center gap-2 overflow-x-auto px-3 py-2">
+        {slides.map((slide, i) => (
+          <button
+            key={slide.id}
+            onClick={() => onSelect(slide.id)}
+            className={cn(
+              "flex w-24 shrink-0 flex-col items-center gap-1 rounded-lg border p-1",
+              slide.id === selectedId
+                ? "border-accent bg-accent-soft"
+                : "border-transparent hover:border-line",
+            )}
+          >
+            <span className="text-[10px] font-semibold tabular-nums text-ink-muted">
+              {i + 1}
+            </span>
+            <SlideThumb slide={slide} theme={theme} themeOverrides={themeOverrides} />
+          </button>
+        ))}
+        <button
+          onClick={onAdd}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-line-strong text-ink-muted hover:border-accent hover:text-accent"
+          aria-label="Add slide"
+        >
+          <IconPlus className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="thin-scroll flex h-full flex-col overflow-y-auto border-r border-line bg-paper">

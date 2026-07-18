@@ -2,11 +2,17 @@
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
-// "Continue with Google" — only shown when Supabase is configured. Works when
-// the Google provider is enabled in the Supabase project's auth settings.
+// "Continue with Google" — only shown when Supabase is configured AND the
+// Google provider has actually been set up in the Supabase dashboard (Client
+// ID/Secret from Google Cloud Console + redirect URL — a manual step that's
+// independent of Supabase itself being configured). Without that env flag,
+// clicking through would hit a broken OAuth flow, so the button stays
+// cleanly hidden rather than shown-but-non-functional.
+const googleOAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
+
 export function GoogleButton({ label }: { label: string }) {
   const sb = supabase;
-  if (!isSupabaseConfigured || !sb) return null;
+  if (!isSupabaseConfigured || !sb || !googleOAuthEnabled) return null;
 
   const onClick = async () => {
     await sb.auth.signInWithOAuth({

@@ -60,6 +60,17 @@ export function contrast(a: string, b: string): number {
 const WHITE = "FFFFFF";
 const NEAR_BLACK = "10151E";
 
+// Deterministic 0..1 float from a string — same inputs always agree, but
+// different templates land at different points in the range.
+function seedFraction(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 1000) / 1000;
+}
+
 export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): ThemeSpec {
   const brand = t.brand;
   const primary = normHex(overrides?.accent ?? brand?.roles?.primary ?? t.accent, "2563EB");
@@ -69,6 +80,22 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
   let dark = normHex(brand?.roles?.dark, mix(primary, NEAR_BLACK, 0.86));
   if (contrast(WHITE, dark) < 4.5) dark = mix(primary, NEAR_BLACK, 0.9);
   if (contrast(WHITE, dark) < 4.5) dark = NEAR_BLACK;
+
+  // Subtle per-template variation on the dark background so two templates
+  // that would otherwise compute a near-identical near-black don't render
+  // as literally the same deck. Seeded on the template's own identity
+  // (brand name, or its editorial "character" label for built-ins) — kept
+  // small enough to never risk the white-text contrast check above.
+  if (!overrides?.backgroundImageUri) {
+    const seed = seedFraction(brand?.name || t.character || primary);
+    const darkAfterTint =
+      seed < 0.34
+        ? dark // standard — no change, most common case
+        : seed < 0.67
+        ? mix(dark, primary, 0.08) // rich-dark — a touch more of the brand hue
+        : mix(dark, WHITE, 0.05); // soft-dark — slightly lifted
+    if (contrast(WHITE, darkAfterTint) >= 4.5) dark = darkAfterTint;
+  }
 
   if (process.env.NODE_ENV === "development") {
     console.log("[buildThemeSpec]", { hasBrand: !!brand, primary, dark });

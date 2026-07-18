@@ -8,6 +8,7 @@ import { SlideView } from "@/components/deck/SlideView";
 import { ButtonLink } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Misc";
 import { cn } from "@/lib/utils";
+import { useSubscription } from "@/lib/useSubscription";
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -21,6 +22,7 @@ export default function PreviewPage({
 }) {
   const { id } = use(params);
   const { ready, getPresentation, slidesFor, templates, getBrandLogos } = useStore();
+  const { subscription } = useSubscription();
   const presentation = getPresentation(id);
   const slides = slidesFor(id);
   const [i, setI] = useState(0);
@@ -116,6 +118,7 @@ export default function PreviewPage({
               total={slides.length}
               logoWatermark={logoWatermark}
               logoDataUri={logoDataUri}
+              showDefaultBrandMark={subscription.features.watermark}
             />
           </div>
 

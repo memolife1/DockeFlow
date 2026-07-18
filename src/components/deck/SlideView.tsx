@@ -39,6 +39,7 @@ export function SlideView({
   className,
   logoWatermark,
   logoDataUri,
+  showDefaultBrandMark = true,
 }: {
   slide: Slide;
   theme: TemplateTheme;
@@ -48,6 +49,10 @@ export function SlideView({
   className?: string;
   logoWatermark?: Presentation["logoWatermark"];
   logoDataUri?: string;
+  // Free-plan-only "DECKEFLOW" fallback brand mark. Defaults to true so
+  // callers that don't pass plan data (previews, share links, local/demo
+  // mode) preserve the app's original always-on behavior.
+  showDefaultBrandMark?: boolean;
 }) {
   const baseSpec = buildThemeSpec(theme, themeOverrides);
   const spec = useMemo(
@@ -60,6 +65,7 @@ export function SlideView({
     total: total ?? 1,
     deckTitle: "",
     spec,
+    showDefaultBrandMark,
   });
   const design = spec.backgroundDesign ? BACKGROUND_DESIGNS[spec.backgroundDesign] : undefined;
 
