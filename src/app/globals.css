@@ -186,6 +186,29 @@ html {
   }
 }
 
+/* AnimatedDemo (src/components/landing/AnimatedDemo.tsx) — typing caret and
+   "generating" dot pulse for the CSS-only product demo widget. */
+@keyframes lp-demo-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes lp-demo-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
 /* Browser-chrome mockup frame around the real app screenshot */
 .lp-browser-frame {
   border-radius: 12px;
