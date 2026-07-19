@@ -33,13 +33,19 @@ export function TemplateCard({
         <TemplatePreview template={template} />
       </div>
       <div className="mt-3 px-1 pb-1">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-ink">{template.name}</h3>
+        <div className="flex items-start justify-between gap-2">
+          {/* Fixed 2-line height reserved regardless of name length — a
+              template with a longer name (e.g. "Crimson Authority") wrapping
+              to a 2nd line must not stretch its whole grid row taller than
+              its neighbors. */}
+          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-ink">
+            {template.name}
+          </h3>
           {template.sourceType === "uploaded" && (
             <Badge tone="accent">Yours</Badge>
           )}
         </div>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
+        <p className="mt-0.5 truncate text-[12px] text-ink-muted">
           {template.theme.character}
         </p>
       </div>

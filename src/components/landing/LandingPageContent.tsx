@@ -1,6 +1,6 @@
 import { Nav } from "./Nav";
 import { Hero } from "./Hero";
-import { AnimatedDemo } from "./AnimatedDemo";
+import { VideoDemo } from "./VideoDemo";
 import { PainSection } from "./PainSection";
 import { HowItWorks } from "./HowItWorks";
 import { FeatureShowcase } from "./FeatureShowcase";
@@ -18,7 +18,7 @@ export function LandingPageContent() {
       <Nav />
       <main>
         <Hero />
-        <AnimatedDemo />
+        <VideoDemo />
         <PainSection />
         <HowItWorks />
         <FeatureShowcase />
