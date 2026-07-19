@@ -5,16 +5,34 @@ import type { Template } from "@/lib/types";
 // "feel" — not a recolored copy of one wireframe. Sized with container-query
 // units so the same design scales in the picker grid and larger contexts.
 
+// A representative Pexels photo per template, keyed by template.name. Static
+// CDN URLs — no API call. Only the 10 templates with a genuine photographic
+// "scene" get one; the rest stay purely color/typography-driven.
+const TEMPLATE_PHOTOS: Record<string, string> = {
+  Editorial: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?w=400",
+  "Sales Motion": "https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?w=400",
+  "Midnight Navy": "https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg?w=400",
+  "Forest Executive": "https://images.pexels.com/photos/1098460/pexels-photo-1098460.jpeg?w=400",
+  "Cobalt Pro": "https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg?w=400",
+  "Consulting Brief": "https://images.pexels.com/photos/669615/pexels-photo-669615.jpeg?w=400",
+  "Ocean Deep": "https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?w=400",
+  "Crimson Authority": "https://images.pexels.com/photos/3760067/pexels-photo-3760067.jpeg?w=400",
+  "Purple Reign": "https://images.pexels.com/photos/3913025/pexels-photo-3913025.jpeg?w=400",
+  "Desert Sand": "https://images.pexels.com/photos/1437493/pexels-photo-1437493.jpeg?w=400",
+};
+
 function Frame({
   children,
   background,
   color,
   serif,
+  photoUrl,
 }: {
   children: React.ReactNode;
   background: string;
   color: string;
   serif?: boolean;
+  photoUrl?: string;
 }) {
   return (
     <div
@@ -27,6 +45,26 @@ function Frame({
           : '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif',
       }}
     >
+      {photoUrl && (
+        // A subtle photographic texture multiplied into the template's own
+        // color underneath — kept faint (30% opacity) so the color still
+        // reads as the template's personality; the photo just adds richness.
+        // A separate layer (not the same background stack as `background`
+        // above) so mix-blend-mode actually blends against that color rather
+        // than doing nothing, which is what background-blend-mode would do
+        // here since the photo and the base color live on different layers.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url(${photoUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.3,
+            mixBlendMode: "multiply",
+          }}
+        />
+      )}
       {children}
     </div>
   );
@@ -35,8 +73,8 @@ function Frame({
 // 1) Editorial — warm serif, magazine-like company overview.
 function Editorial({ accent }: { accent: string }) {
   return (
-    <Frame background="#fbf7f1" color="#2b2622" serif>
-      <div className="flex h-full flex-col px-[8%] py-[7%]">
+    <Frame background="#fbf7f1" color="#2b2622" serif photoUrl={TEMPLATE_PHOTOS.Editorial}>
+      <div className="relative flex h-full flex-col px-[8%] py-[7%]">
         <span
           className="text-[2.3cqw] font-semibold uppercase tracking-[0.24em]"
           style={{ color: accent, fontFamily: '"Plus Jakarta Sans", sans-serif' }}
@@ -104,8 +142,8 @@ function Boardroom({ accent }: { accent: string }) {
 // 3) Sales Motion — bold, high-contrast pitch with a solid accent "ask" block.
 function SalesMotion({ accent }: { accent: string }) {
   return (
-    <Frame background="#ffffff" color="#171310">
-      <div className="flex h-full">
+    <Frame background="#ffffff" color="#171310" photoUrl={TEMPLATE_PHOTOS["Sales Motion"]}>
+      <div className="relative flex h-full">
         <div className="flex flex-1 flex-col justify-center px-[8%] py-[7%]">
           <span
             className="text-[2.4cqw] font-extrabold uppercase tracking-[0.16em]"
@@ -147,8 +185,8 @@ function Consulting({ accent }: { accent: string }) {
     ["03", "Expansion revenue under-indexed"],
   ];
   return (
-    <Frame background="#f6f7fb" color="#1b2231">
-      <div className="flex h-full flex-col px-[7%] py-[6%]">
+    <Frame background="#f6f7fb" color="#1b2231" photoUrl={TEMPLATE_PHOTOS["Consulting Brief"]}>
+      <div className="relative flex h-full flex-col px-[7%] py-[6%]">
         <div className="flex items-baseline justify-between">
           <h3 className="text-[4cqw] font-bold tracking-[-0.01em]">
             Findings &amp; Recommendation
@@ -361,7 +399,12 @@ function GenericPreview({ template }: { template: Template }) {
   const ink = onDark ? "#FFFFFF" : theme.ink;
   const bodyColor = onDark ? "rgba(255,255,255,0.7)" : "#5c5f66";
   return (
-    <Frame background={background} color={ink} serif={theme.fontFamily === "serif"}>
+    <Frame
+      background={background}
+      color={ink}
+      serif={theme.fontFamily === "serif"}
+      photoUrl={TEMPLATE_PHOTOS[template.name]}
+    >
       <div className="relative flex h-full flex-col overflow-hidden px-[8%] py-[7%]">
         <DecorationMark style={theme.decorationStyle} color={onDark ? "#FFFFFF" : theme.accent} />
         {!onDark && (
