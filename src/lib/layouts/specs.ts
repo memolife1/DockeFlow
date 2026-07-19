@@ -433,9 +433,9 @@ const titleSplit: LayoutFn = (s, ctx) => {
       }),
     );
   }
-  // Light right side with a large decorative element.
-  els.push({ kind: "shape", shape: "ellipse", x: panelW + 1.6, y: 1.15, w: 5.2, h: 5.2, fill: "primaryTint" });
-  els.push({ kind: "shape", shape: "ellipse", x: panelW + 3.0, y: 2.55, w: 2.4, h: 2.4, fill: "primary" });
+  // Light right side — decoration DNA-aware (Design tab's picker / template
+  // default), same shapes titleHero draws against its dark background.
+  els.push(...decorationEls(ctx, s.title));
   return { background: "surface", elements: els };
 };
 
@@ -633,6 +633,7 @@ const statKpi: LayoutFn = (s, ctx) => {
         align: "center",
         valign: "middle",
         shrink: true,
+        maxLines: 1,
       }),
     );
     els.push(
@@ -939,6 +940,7 @@ const closingCta: LayoutFn = (s, ctx) => {
   const steps = s.content.filter(Boolean).slice(0, 4);
   const closingMark = brandMark("primaryTint", ctx);
   const els: LayoutEl[] = [
+    ...decorationEls(ctx, s.title),
     ...(closingMark ? [closingMark] : []),
     titleText(ctx, M, 1.35, W - M * 2 - 1.5, 1.9, s.title, 34, "textOnDark", {
       bold: true,

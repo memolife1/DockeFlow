@@ -76,7 +76,7 @@ export default function TemplatesPage() {
             <h3 className="mb-4 text-sm font-semibold text-ink-soft">
               Your uploads
             </h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
               {uploaded.map((t) => (
                 <TemplateCard
                   key={t.id}
@@ -112,7 +112,7 @@ export default function TemplatesPage() {
               ))}
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {builtIn.map((t, i) => {
               const locked = templatesLocked && i >= FREE_TEMPLATE_LIMIT;
               return (

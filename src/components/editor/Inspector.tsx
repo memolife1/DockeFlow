@@ -16,7 +16,7 @@ import { IconPlus, IconTrash, IconCopy, IconUpload, IconX } from "@/components/u
 import { resolveLayoutId } from "@/lib/layouts/specs";
 import { cropDataUriTo16x9 } from "@/lib/cropImage";
 import { useStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, textOf } from "@/lib/utils";
 import {
   BACKGROUND_DESIGNS,
   BACKGROUND_DESIGN_KEYS,
@@ -274,7 +274,7 @@ export function Inspector({
                 {slide.content.map((line, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <Input
-                      value={line}
+                      value={textOf(line)}
                       onChange={(e) => setLine(i, e.target.value)}
                       placeholder="Add a point…"
                     />
@@ -438,7 +438,12 @@ const DECORATION_STYLES: { key: NonNullable<SlideDesign["decorationStyle"]>; lab
 // Layouts whose specs.ts function actually renders decorationEls() — showing
 // this picker elsewhere would be a dead control (e.g. content_bullets has no
 // decorative shapes to swap).
-const DECORATION_LAYOUTS = new Set(["title_hero", "section_divider"]);
+const DECORATION_LAYOUTS = new Set([
+  "title_hero",
+  "title_split",
+  "section_divider",
+  "closing_cta",
+]);
 
 function DesignTab({
   designScope,

@@ -7,7 +7,7 @@ import type { Presentation, Slide, Template } from "@/lib/types";
 import { SlideThumb } from "@/components/deck/SlideView";
 import { Badge } from "@/components/ui/Misc";
 import { relativeTime } from "@/lib/utils";
-import { IconCopy, IconTrash, IconPlay, IconGrid } from "@/components/ui/icons";
+import { IconCopy, IconTrash, IconPlay, IconGrid, IconDownload } from "@/components/ui/icons";
 
 const STATUS_TONE = {
   draft: "neutral",
@@ -23,6 +23,7 @@ export function PresentationCard({
   onDelete,
   onDuplicate,
   onRename,
+  onExport,
 }: {
   presentation: Presentation;
   slides: Slide[];
@@ -30,6 +31,7 @@ export function PresentationCard({
   onDelete: () => void;
   onDuplicate: () => void;
   onRename: (title: string) => void;
+  onExport: () => void;
 }) {
   const router = useRouter();
   const [menu, setMenu] = useState(false);
@@ -52,9 +54,9 @@ export function PresentationCard({
       onClick={() => {
         if (!renaming) router.push(editHref);
       }}
-      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-line bg-paper shadow-card transition-shadow hover:shadow-raised"
+      className="group relative flex cursor-pointer flex-col rounded-xl border border-line bg-paper shadow-card transition-shadow hover:shadow-raised"
     >
-      <div className="border-b border-line bg-paper-sunk p-4">
+      <div className="overflow-hidden rounded-t-xl border-b border-line bg-paper-sunk p-4">
         {first && theme ? (
           <SlideThumb slide={first} theme={theme} />
         ) : (
@@ -107,7 +109,7 @@ export function PresentationCard({
             <span className="text-lg leading-none">⋯</span>
           </button>
           {menu && (
-            <div className="absolute right-0 top-9 z-10 w-40 overflow-hidden rounded-lg border border-line bg-paper py-1 shadow-pop">
+            <div className="absolute right-0 top-9 z-50 w-40 overflow-hidden rounded-lg border border-line bg-paper py-1 shadow-pop">
               <Link
                 href={editHref}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunk"
@@ -131,6 +133,16 @@ export function PresentationCard({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-soft hover:bg-paper-sunk"
               >
                 Rename
+              </button>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onExport();
+                  setMenu(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-soft hover:bg-paper-sunk"
+              >
+                <IconDownload className="h-4 w-4" /> Export
               </button>
               <button
                 onMouseDown={(e) => {

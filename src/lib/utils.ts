@@ -49,3 +49,19 @@ export function initials(name: string): string {
 export function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
+
+// Extracts a display string from a list item that's supposed to be a plain
+// string but might arrive as an object (e.g. a generation model returning
+// {text: "..."} instead of "..." for a bullet/point) — used anywhere a
+// string[] is built from unknown model/JSON input, so a schema drift never
+// surfaces as a literal "[object Object]" in the UI.
+export function textOf(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    const text = o.text ?? o.content ?? o.label ?? o.value;
+    if (typeof text === "string") return text;
+  }
+  return "";
+}

@@ -197,6 +197,16 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
         : el.color === "textBody" && spec.bodyOverride
         ? spec.bodyOverride
         : spec.colors[el.color];
+    // How many lines actually fit el.h at this element's own font size/line
+    // spacing — both already in the same inches/points units as el.h, so no
+    // pixel measurement is needed. A template's headlineWeight/sizeMultiplier
+    // DNA can inflate the rendered font size well past what a layout's
+    // hardcoded maxLines was tuned for; clamping to whichever is smaller is
+    // what keeps text from visually cutting off mid-line instead of wrapping
+    // to a clean line boundary.
+    const lineHeightIn = (el.size * (el.lineSpacing ?? 1.15)) / 72;
+    const fitLines = Math.max(1, Math.floor(el.h / lineHeightIn));
+    const lineClamp = el.maxLines ? Math.min(el.maxLines, fitLines) : fitLines;
     return (
       <div
         style={{
@@ -226,7 +236,7 @@ function El({ el, spec }: { el: LayoutEl; spec: ThemeSpec }) {
             overflow: "hidden",
             display: "-webkit-box",
             WebkitBoxOrient: "vertical",
-            WebkitLineClamp: el.maxLines ?? 99,
+            WebkitLineClamp: lineClamp,
           }}
         >
           {el.text}

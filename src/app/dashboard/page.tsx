@@ -6,6 +6,7 @@ import { PresentationCard } from "@/components/deck/PresentationCard";
 import { EmptyState } from "@/components/ui/Misc";
 import { ButtonLink, Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ExportDialog } from "@/components/editor/ExportDialog";
 import { useStore } from "@/lib/store";
 import { getTemplate } from "@/lib/templates";
 import { IconPlus, IconDeck } from "@/components/ui/icons";
@@ -27,6 +28,7 @@ export default function DashboardPage() {
     updatePresentation,
   } = useStore();
   const [pending, setPending] = useState<Presentation | null>(null);
+  const [exporting, setExporting] = useState<Presentation | null>(null);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -147,6 +149,7 @@ export default function DashboardPage() {
                   onDelete={() => setPending(p)}
                   onDuplicate={() => duplicate(p)}
                   onRename={(title) => updatePresentation(p.id, { title })}
+                  onExport={() => setExporting(p)}
                 />
               ))}
             </div>
@@ -175,6 +178,13 @@ export default function DashboardPage() {
             </Button>
           </>
         }
+      />
+
+      <ExportDialog
+        open={!!exporting}
+        onClose={() => setExporting(null)}
+        presentationId={exporting?.id ?? ""}
+        title={exporting?.title ?? ""}
       />
     </AppShell>
   );

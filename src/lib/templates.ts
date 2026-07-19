@@ -6,7 +6,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "tpl_editorial",
     name: "Editorial",
-    category: "General",
+    category: "Creative",
     description:
       "Serif headlines, generous whitespace, left-aligned. Reads like a considered document.",
     sourceType: "built-in",
@@ -118,7 +118,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "tpl_mono",
     name: "Monochrome",
-    category: "General",
+    category: "Creative",
     description:
       "Black, white, and one line weight. Maximum focus on the words.",
     sourceType: "built-in",
@@ -141,7 +141,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "midnight-navy",
     name: "Midnight Navy",
-    category: "Corporate",
+    category: "Executive",
     description:
       "Deep navy authority with gold accents. Board rooms and investor decks.",
     sourceType: "built-in",
@@ -189,7 +189,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "forest-executive",
     name: "Forest Executive",
-    category: "Consulting",
+    category: "Executive",
     description:
       "Deep forest green with cream. Sophisticated consulting and strategy.",
     sourceType: "built-in",
@@ -211,7 +211,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "pure-slate",
     name: "Pure Slate",
-    category: "Tech",
+    category: "Consulting",
     description:
       "Charcoal slate with electric cyan. Modern tech and SaaS decks.",
     sourceType: "built-in",
@@ -234,7 +234,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "crimson-authority",
     name: "Crimson Authority",
-    category: "Corporate",
+    category: "Sales",
     description: "Deep crimson with white space. Confident and commanding.",
     sourceType: "built-in",
     theme: {
@@ -257,7 +257,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "ocean-deep",
     name: "Ocean Deep",
-    category: "Consulting",
+    category: "Startup",
     description:
       "Rich teal with warm white. Research reports and annual reviews.",
     sourceType: "built-in",
@@ -325,7 +325,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "desert-sand",
     name: "Desert Sand",
-    category: "Sales",
+    category: "Creative",
     description: "Warm sand with terracotta. Human, warm, and memorable.",
     sourceType: "built-in",
     theme: {
@@ -346,7 +346,7 @@ export const BUILT_IN_TEMPLATES: Template[] = [
   {
     id: "arctic-white",
     name: "Arctic White",
-    category: "Corporate",
+    category: "Creative",
     description:
       "Ultra-clean white with ice blue. Minimalist and editorial.",
     sourceType: "built-in",
@@ -375,12 +375,9 @@ export function getTemplate(
 
 export const TEMPLATE_CATEGORIES = [
   "All",
-  "General",
   "Executive",
   "Sales",
   "Consulting",
   "Startup",
-  "Corporate",
-  "Tech",
   "Creative",
 ];

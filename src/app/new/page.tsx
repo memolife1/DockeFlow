@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -51,6 +51,12 @@ const SLIDE_COUNTS: { value: number; label: string; sub: string }[] = [
 
 const STEP_LABELS = ["Start", "Details", "Template", "Generate"];
 
+// Auto-saved so navigating away (e.g. to upload a logo) never loses wizard
+// progress — restored via a banner on next load, cleared once a deck is
+// actually generated. Session-local only (localStorage), never synced.
+const WIZARD_DRAFT_KEY = "deckeflow_wizard_draft";
+const WIZARD_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 export default function NewPresentationPage() {
   const router = useRouter();
   const {
@@ -83,6 +89,11 @@ export default function NewPresentationPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [upgradePlan, setUpgradePlan] = useState<PlanId | undefined>(undefined);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [savedDraft, setSavedDraft] = useState<{
+    form: typeof form;
+    step: number;
+  } | null>(null);
 
   const userImages = getUserImages();
   const logos = getBrandLogos();
@@ -116,6 +127,47 @@ export default function NewPresentationPage() {
 
   const effectiveSlideCount =
     form.targetSlideCount === -1 ? customSlideCount : form.targetSlideCount;
+
+  // Load a saved draft once, on mount — only offered if it's recent and has
+  // some actual content (an empty/untouched draft isn't worth restoring).
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(WIZARD_DRAFT_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as {
+        form: typeof form;
+        step: number;
+        savedAt: number;
+      };
+      if (Date.now() - parsed.savedAt > WIZARD_DRAFT_MAX_AGE_MS) {
+        window.localStorage.removeItem(WIZARD_DRAFT_KEY);
+        return;
+      }
+      if (parsed.form?.title || parsed.form?.notes || parsed.form?.audience) {
+        setSavedDraft({ form: parsed.form, step: parsed.step ?? 0 });
+        setShowDraftBanner(true);
+      }
+    } catch {
+      /* corrupted draft — ignore */
+    }
+    // Mount-only: this reads whatever was saved from a previous visit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-save on every change so navigating away (e.g. to upload a logo in
+  // a new tab) never loses progress. Skipped while empty/untouched so a
+  // fresh visit doesn't immediately create a draft of nothing.
+  useEffect(() => {
+    if (!form.title && !form.notes && !form.audience) return;
+    try {
+      window.localStorage.setItem(
+        WIZARD_DRAFT_KEY,
+        JSON.stringify({ form, step, savedAt: Date.now() }),
+      );
+    } catch {
+      /* storage unavailable/full — draft just won't persist */
+    }
+  }, [form, step]);
 
   const generate = async () => {
     setError("");
@@ -175,6 +227,11 @@ export default function NewPresentationPage() {
       const data = (await res.json()) as { slides: Slide[] };
       setSlides(pres.id, data.slides);
       updatePresentation(pres.id, { status: "ready" });
+      try {
+        window.localStorage.removeItem(WIZARD_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       router.push(`/presentations/${pres.id}/edit`);
     } catch {
       updatePresentation(pres.id, { status: "error" });
@@ -238,6 +295,43 @@ export default function NewPresentationPage() {
       {/* Body */}
       <div className="flex flex-1 justify-center px-6 py-10">
         <div className="w-full max-w-2xl animate-fade-up">
+          {showDraftBanner && savedDraft && (
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+              <div className="min-w-0">
+                <span className="text-sm font-medium text-ink">
+                  Continue where you left off?
+                </span>
+                <span className="ml-2 truncate text-sm text-ink-muted">
+                  &ldquo;{savedDraft.form.title || "Untitled presentation"}&rdquo;
+                </span>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={() => {
+                    setForm(savedDraft.form);
+                    setStep(savedDraft.step);
+                    setShowDraftBanner(false);
+                  }}
+                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover"
+                >
+                  Restore draft
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      window.localStorage.removeItem(WIZARD_DRAFT_KEY);
+                    } catch {
+                      /* ignore */
+                    }
+                    setShowDraftBanner(false);
+                  }}
+                  className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-muted hover:bg-paper-soft"
+                >
+                  Start fresh
+                </button>
+              </div>
+            </div>
+          )}
           {step === 0 && (
             <div>
               <Eyebrow>Step 1</Eyebrow>
@@ -482,7 +576,12 @@ export default function NewPresentationPage() {
                 {imageSource === "mine" && userImages.length === 0 && (
                   <p className="mt-3 text-[13px] text-amber-600">
                     You haven&apos;t uploaded any photos yet.{" "}
-                    <Link href="/images" className="underline hover:text-amber-700">
+                    <Link
+                      href="/images"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-amber-700"
+                    >
                       Upload some
                     </Link>{" "}
                     or pick a different image source.
@@ -545,6 +644,8 @@ export default function NewPresentationPage() {
                     No logos yet.{" "}
                     <Link
                       href="/logos?returnTo=/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-accent hover:text-accent-hover"
                     >
                       Upload logo →
@@ -559,6 +660,8 @@ export default function NewPresentationPage() {
                     </p>
                     <Link
                       href="/logos?returnTo=/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-[12px] font-medium text-accent hover:text-accent-hover"
                     >
                       + Add another logo

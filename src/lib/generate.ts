@@ -12,7 +12,7 @@ import type {
   TimelineItem,
   Tone,
 } from "./types";
-import { uid } from "./utils";
+import { uid, textOf } from "./utils";
 
 export interface GenerateInput {
   presentationId: string;
@@ -739,7 +739,7 @@ export function normalizeColumns(columns: unknown): SlideColumn[] | undefined {
       return {
         heading: o?.heading != null ? String(o.heading).trim() : "",
         points: Array.isArray(o?.points)
-          ? o.points.map(String).filter(Boolean).slice(0, 5)
+          ? o.points.map(textOf).filter(Boolean).slice(0, 5)
           : [],
       };
     })

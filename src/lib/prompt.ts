@@ -5,6 +5,7 @@ import type {
   DraftSlide as DraftSlideT,
 } from "./generate";
 import type { LayoutId } from "./types";
+import { textOf } from "./utils";
 
 // System prompt for slide generation. Instructs the model to write real,
 // specific business content, select from the 16 premium layouts, attach
@@ -211,7 +212,9 @@ function toStr(v: unknown): string {
 }
 
 function strArray(v: unknown): string[] {
-  return Array.isArray(v) ? v.map(String).filter(Boolean) : [];
+  // textOf (not String) — a model that returns bullets as [{text: "..."}]
+  // instead of ["..."] must not surface as a literal "[object Object]".
+  return Array.isArray(v) ? v.map(textOf).filter(Boolean) : [];
 }
 
 const DARK_LAYOUTS = new Set<LayoutId>([
