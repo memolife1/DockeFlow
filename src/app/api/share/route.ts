@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Slide, TemplateTheme } from "@/lib/types";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,9 @@ interface ShareBody {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -46,7 +50,13 @@ export async function POST(req: Request) {
     expires_at: expiresAt,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[share] Supabase insert failed:", error.message);
+    return NextResponse.json(
+      { error: "Couldn't create a share link. Please try again." },
+      { status: 500 },
+    );
+  }
 
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;

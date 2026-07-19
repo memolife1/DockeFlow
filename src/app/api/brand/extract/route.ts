@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { extractBrandFromPptx } from "@/lib/brandExtract";
 import { contrast, normHex } from "@/lib/layouts/theme";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,9 @@ function colorDistance(hex1: string, hex2: string): number {
 // plus the raw palette for the confirmation UI. Contrast is checked here too
 // so the client preview matches what buildThemeSpec() will actually use.
 export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
   let form: FormData;
   try {
     form = await req.formData();

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { PLANS } from "@/lib/plans";
-import { getAuthedUser, getUserSubscription, setStripeCustomerId } from "@/lib/subscription";
+import { getUserSubscription, setStripeCustomerId } from "@/lib/subscription";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -39,11 +41,17 @@ export async function POST(req: Request) {
 
   // Identify the caller from their own session token — never trust a
   // client-supplied userId/email for who's being charged.
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
-  const user = await getAuthedUser(token);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(req, { strict: true });
+  if (auth.error) return auth.error;
+  const { user, token } = auth;
+
+  // Max 5 checkout attempts per 5 minutes per user.
+  const rl = rateLimit(`checkout:${user.id}`, 5, 300);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts. Please wait and try again." },
+      { status: 429, headers: { "Retry-After": String(rl.resetIn) } },
+    );
   }
 
   const existing = token ? await getUserSubscription(token, user.id) : null;

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { contrast, normHex } from "@/lib/layouts/theme";
 import { assertPublicHttpUrl, UnsafeUrlError } from "@/lib/netGuard";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -119,6 +121,19 @@ function extractColorsFromHtml(html: string, css: string): ExtractedColors {
 // instead of uploading a .pptx. Heuristic, not a pixel-perfect scrape: reads
 // CSS custom properties, favicon/og:image, and font-family declarations.
 export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+
+  // Max 20 URL extractions per minute per user — each one fetches an
+  // arbitrary external site plus its stylesheets and favicon.
+  const rl = rateLimit(`extract-url:${auth.user.id}`, 20, 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(rl.resetIn) } },
+    );
+  }
+
   const { url: rawUrl } = await req.json().catch(() => ({}));
   if (!rawUrl || typeof rawUrl !== "string") {
     return NextResponse.json({ error: "URL required" }, { status: 400 });

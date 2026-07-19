@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { Spinner } from "@/components/ui/Misc";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
@@ -126,9 +126,14 @@ export function UploadStyleReference({
     setLastName(file.name);
     setError("");
     try {
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/brand/extract", { method: "POST", body: form });
+      const res = await fetch("/api/brand/extract", {
+        method: "POST",
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+        body: form,
+      });
       const data = (await res.json()) as { brand?: Brand; error?: string };
       if (!res.ok || !data.brand) {
         setError(data.error || "Couldn't read that file.");
@@ -150,9 +155,13 @@ export function UploadStyleReference({
     setError("");
     try {
       const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
       const res = await fetch("/api/brand/extract-url", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ url }),
       });
       const data = (await res.json()) as { brand?: Brand; domain?: string; error?: string };

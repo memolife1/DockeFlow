@@ -15,16 +15,53 @@ import {
 } from "@/lib/prompt";
 import {
   isBillingConfigured,
-  getAuthedUser,
   checkCanGenerate,
   incrementUsage,
 } from "@/lib/subscription";
 import { PLANS } from "@/lib/plans";
+import { requireAuth } from "@/lib/auth/requireAuth";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
 interface GenerateBody extends GenerateInput {
   useStockImages?: boolean;
+}
+
+const ALLOWED_LANGUAGES = ["English", "Arabic", "French", "German", "Russian"];
+
+function validateGenerateInput(
+  body: unknown,
+): { valid: true } | { valid: false; error: string } {
+  if (!body || typeof body !== "object") {
+    return { valid: false, error: "Invalid request body" };
+  }
+  const b = body as Record<string, unknown>;
+
+  if (!b.title || typeof b.title !== "string" || b.title.trim().length === 0) {
+    return { valid: false, error: "Title is required" };
+  }
+  if (b.title.length > 200) {
+    return { valid: false, error: "Title too long (max 200 chars)" };
+  }
+  if (b.notes !== undefined && b.notes !== null) {
+    if (typeof b.notes !== "string") {
+      return { valid: false, error: "Notes must be text" };
+    }
+    if (b.notes.length > 5000) {
+      return { valid: false, error: "Notes too long (max 5000 chars)" };
+    }
+  }
+  if (b.targetSlideCount !== undefined) {
+    const count = Number(b.targetSlideCount);
+    if (!Number.isFinite(count) || count < 4 || count > 30) {
+      return { valid: false, error: "Slide count must be between 4 and 30" };
+    }
+  }
+  if (b.language !== undefined && !ALLOWED_LANGUAGES.includes(b.language as string)) {
+    return { valid: false, error: "Invalid language" };
+  }
+  return { valid: true };
 }
 
 // Pull a JSON object out of the model's text response.
@@ -313,23 +350,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "A title is required" }, { status: 400 });
+  const validation = validateGenerateInput(body);
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
   // Usage limits only apply when there's a real backend to enforce them
   // against — the app's local/demo mode (no Supabase configured) stays
   // unrestricted, as it already is everywhere else in this codebase.
-  let accessToken: string | null = null;
-  let userId: string | null = null;
-  if (isBillingConfigured) {
-    const authHeader = req.headers.get("authorization");
-    accessToken = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
-    const user = await getAuthedUser(accessToken);
-    if (!user || !accessToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const accessToken = auth.token;
+  const userId = isBillingConfigured ? auth.user.id : null;
+
+  if (isBillingConfigured && accessToken && userId) {
+    // Max 10 generations per minute per user — each one costs a real Claude
+    // API call.
+    const rl = rateLimit(`generate:${userId}`, 10, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait before generating again.", retryAfter: rl.resetIn },
+        { status: 429, headers: { "Retry-After": String(rl.resetIn) } },
+      );
     }
-    userId = user.id;
 
     const { allowed, subscription } = await checkCanGenerate(accessToken, userId);
     if (!allowed) {

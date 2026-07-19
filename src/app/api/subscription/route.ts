@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PLANS } from "@/lib/plans";
-import { isBillingConfigured, getAuthedUser, getUserSubscription } from "@/lib/subscription";
+import { isBillingConfigured, getUserSubscription } from "@/lib/subscription";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 export const runtime = "nodejs";
 
@@ -21,10 +22,10 @@ export async function GET(req: Request) {
     return NextResponse.json(UNRESTRICTED);
   }
 
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
-  const user = await getAuthedUser(token);
-  if (!user || !token) {
+  const auth = await requireAuth(req);
+  if (auth.error) return auth.error;
+  const { user, token } = auth;
+  if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

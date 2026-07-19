@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Misc";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { IconDoc, IconDeck, IconCheck, IconLock } from "@/components/ui/icons";
 import type { ExportJob } from "@/lib/types";
@@ -103,9 +104,13 @@ export function ExportDialog({
           planWatermark: subscription.features.watermark,
         });
       } else {
+        const session = supabase ? (await supabase.auth.getSession()).data.session : null;
         const res = await fetch("/api/share", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({
             presentationId,
             slides,
