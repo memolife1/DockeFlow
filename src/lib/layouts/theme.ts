@@ -1,5 +1,6 @@
 import type { Presentation, Slide, TemplateTheme } from "../types";
 import { isBackgroundDesignKey } from "../backgroundDesigns";
+import { getFontById } from "../fonts";
 import type { ColorRole, ThemeSpec } from "./types";
 
 type ThemeOverrides = Presentation["themeOverrides"];
@@ -135,10 +136,21 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
   if (contrast(effPrimary, WHITE) < 2.2)
     effPrimary = mix(effPrimary, NEAR_BLACK, 0.35);
 
-  let surface = normHex(overrides?.surface ?? brand?.roles?.surface, WHITE);
+  // Surface/ink previously fell straight through to a hardcoded WHITE/
+  // "2B3038" whenever there was no Design-tab override or brand extraction —
+  // silently discarding every built-in template's own declared surface/ink
+  // (e.g. "Editorial"'s warm cream FAF7F2 + near-black 1C1917), so every
+  // template rendered with the exact same white background and body-text
+  // color regardless of its actual theme. This is also why the Inspector's
+  // color swatches (which read theme.surface/theme.ink directly) looked
+  // "wrong" — they showed the template's real declared color while the
+  // renderer was quietly ignoring it. t.surface/t.ink now sit in the same
+  // override > brand > template > hardcoded-fallback chain as every other
+  // role above.
+  let surface = normHex(overrides?.surface ?? brand?.roles?.surface ?? t.surface, WHITE);
   let surfaceAlt = mix(effPrimary, WHITE, 0.945);
   let neutralTint = "F2F4F8";
-  let textBody = normHex(overrides?.ink, "2B3038");
+  let textBody = normHex(overrides?.ink ?? t.ink, "2B3038");
   let textMuted = "666D7A";
 
   // Gradient-background templates ("Midnight Navy", "Cobalt Pro", etc.) put
@@ -218,16 +230,37 @@ export function buildThemeSpec(t: TemplateTheme, overrides?: ThemeOverrides): Th
       : "Plus Jakarta Sans"
     : brand?.fontBody || "Plus Jakarta Sans";
 
+  let fontHeadCss = serif
+    ? '"Iowan Old Style", Palatino, Georgia, serif'
+    : `"${fontHead}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+  let fontBodyCss = bodySerif
+    ? '"Iowan Old Style", Palatino, Georgia, serif'
+    : `"${fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+  let resolvedFontHead = fontHead;
+  let resolvedFontBody = fontBody;
+
+  // A specific Google Font (Design tab's font picker) is the most deliberate
+  // override of all — it wins over both the brand's extracted font and the
+  // plain sans/serif toggle above.
+  const headingFont = getFontById(overrides?.headingFontId);
+  if (headingFont) {
+    resolvedFontHead = headingFont.pptxName;
+    fontHeadCss = headingFont.cssStack;
+  }
+  const bodyFont = getFontById(overrides?.bodyFontId);
+  if (bodyFont) {
+    resolvedFontBody = bodyFont.pptxName;
+    fontBodyCss = bodyFont.cssStack;
+  }
+
   return {
     colors,
-    fontHead,
-    fontBody,
-    fontHeadCss: serif
-      ? '"Iowan Old Style", Palatino, Georgia, serif'
-      : `"${fontHead}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`,
-    fontBodyCss: bodySerif
-      ? '"Iowan Old Style", Palatino, Georgia, serif'
-      : `"${fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`,
+    fontHead: resolvedFontHead,
+    fontBody: resolvedFontBody,
+    fontHeadCss,
+    fontBodyCss,
+    headingFontId: overrides?.headingFontId,
+    bodyFontId: overrides?.bodyFontId,
     chartPalette: [
       effPrimary,
       colors.primaryShade,
@@ -290,6 +323,7 @@ export function applySlideDesign(spec: ThemeSpec, sd: Slide["slideDesign"]): The
       sd.headingFont === "serif"
         ? '"Iowan Old Style", Palatino, Georgia, serif'
         : `"${next.fontHead}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+    next.headingFontId = undefined;
   }
   if (sd.bodyFont) {
     next.fontBody = sd.bodyFont === "serif" ? "Georgia" : "Plus Jakarta Sans";
@@ -297,6 +331,21 @@ export function applySlideDesign(spec: ThemeSpec, sd: Slide["slideDesign"]): The
       sd.bodyFont === "serif"
         ? '"Iowan Old Style", Palatino, Georgia, serif'
         : `"${next.fontBody}", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif`;
+    next.bodyFontId = undefined;
+  }
+  // A per-slide Google Font choice is the most deliberate override of all —
+  // it wins over everything above, including a per-slide sans/serif toggle.
+  const headingFont = getFontById(sd.headingFontId);
+  if (headingFont) {
+    next.fontHead = headingFont.pptxName;
+    next.fontHeadCss = headingFont.cssStack;
+    next.headingFontId = sd.headingFontId;
+  }
+  const bodyFont = getFontById(sd.bodyFontId);
+  if (bodyFont) {
+    next.fontBody = bodyFont.pptxName;
+    next.fontBodyCss = bodyFont.cssStack;
+    next.bodyFontId = sd.bodyFontId;
   }
   if (sd.decorationStyle) next.decorationStyle = sd.decorationStyle;
   return next;

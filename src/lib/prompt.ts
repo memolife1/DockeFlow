@@ -28,7 +28,7 @@ Produce a deck as JSON matching exactly this shape:
 {
   "slides": [
     {
-      "layoutId": "one of the 20 layout ids below",
+      "layoutId": "one of the 23 layout ids below",
       "title": "string — see HEADLINE rules",
       "subtitle": "string — ONLY on title_hero/title_split, the first slide",
       "bullets": ["string", ...],
@@ -43,6 +43,7 @@ Produce a deck as JSON matching exactly this shape:
       "funnel": [{ "label": "Leads", "value": "1,240" }],
       "swot": { "s": ["..."], "w": ["..."], "o": ["..."], "t": ["..."] },
       "team": [{ "name": "Full Name", "role": "Title" }],
+      "tableData": { "headers": ["Column 1", "Column 2"], "rows": [["...", "..."]] },
       "imageQuery": "2-4 word photo search, only for single-image-zone layouts",
       "imageQueries": ["3-4 word photo search", "..."],
       "sectionNumber": 1,
@@ -57,7 +58,7 @@ Produce a deck as JSON matching exactly this shape:
   ]
 }
 
-THE 20 LAYOUTS — pick the one whose slots actually fit the content:
+THE 23 LAYOUTS — pick the one whose slots actually fit the content:
 - title_hero: opening slide. subtitle required. Exactly one, first slide.
 - title_split: an alternative opening/part-break with a strong one-line statement + subtitle.
 - agenda: numbered list of what the deck covers — bullets only, 4-8 short items.
@@ -77,6 +78,9 @@ THE 20 LAYOUTS — pick the one whose slots actually fit the content:
 - image_two_column: two full-height photos side by side with a dark caption bar naming the moment. imageQueries required — EXACTLY 2 distinct scene searches, one per zone.
 - image_four_grid: four photos in a 2x2 grid, each with a short caption — use "bullets" (up to 4, one per photo) as the captions. imageQueries required — EXACTLY 4 distinct scene searches, one per photo.
 - image_showcase: one large hero photo (55% width) beside three stacked supporting photos, with a title overlay on the hero. imageQueries required — EXACTLY 3 distinct scene searches (main hero photo first, then two supporting detail shots).
+- quote_testimonial: a large centered quote with attribution — ideal for client testimonials, expert opinions, or impactful statements. Use "title" as the quote text, bullets[0] as "Name, Title", bullets[1] as the company/context line.
+- data_table: rows and columns of tabular data — ideal for specifications, pricing comparisons, event schedules, or any structured data. Use "tableData.headers" (2-5 columns) and "tableData.rows" (up to 6 rows, each an array matching headers.length).
+- callout_box: a single bold highlighted message — ideal for key decisions, critical warnings, or "the one thing to remember." Use "title" for the big statement, bullets[0] as the eyebrow label (default "Key takeaway" if omitted), bullets[1] as optional supporting text below the box. Use sparingly, for maximum visual impact on a single critical point.
 
 ICON NAMES (use exactly these, one per bullet where a layout's rule calls for it — omit or use null when a bullet has no natural icon): ${ICON_LIST}
 
@@ -91,6 +95,7 @@ LAYOUT DIVERSITY RULES — follow every one:
    - BAD: "technology innovation" -> GOOD: "close-up of a microchip under blue laboratory lighting"
    - BAD: "success concept" -> GOOD: "team celebrating around a laptop in a startup office"
 7. Numbers should feel real, not rounded for convenience. Prefer "47%" or "3.2x" over "50%" or "3x" — specific figures read as researched, round ones read as invented.
+8. For event company, hospitality, or conference-related presentations, prefer image_full_bleed, image_four_grid, quote_testimonial, and callout_box layouts over dense text slides — these audiences read decks as much for visual atmosphere as for content.
 
 RULES — follow every one:
 
@@ -158,6 +163,7 @@ export interface ModelSlide {
   sectionNumber?: unknown;
   speakerNotes?: string;
   chart?: unknown;
+  tableData?: unknown;
 }
 
 // Legacy layout names -> new layout ids, tolerated from older prompts/models.
@@ -205,6 +211,12 @@ const LAYOUT_SYNONYMS: Record<string, LayoutId> = {
   image_grid: "image_four_grid",
   image_showcase: "image_showcase",
   showcase: "image_showcase",
+  quote_testimonial: "quote_testimonial",
+  testimonial: "quote_testimonial",
+  data_table: "data_table",
+  table: "data_table",
+  callout_box: "callout_box",
+  callout: "callout_box",
 };
 
 function toStr(v: unknown): string {
@@ -255,6 +267,7 @@ export function modelSlidesToDrafts(slides: ModelSlide[]): DraftSlideT[] {
       funnel: s.funnel,
       swot: s.swot,
       team: s.team,
+      tableData: s.tableData,
       imageQuery: typeof s.imageQuery === "string" ? s.imageQuery : undefined,
       imageQueries: s.imageQueries,
       sectionNumber:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { Presentation, Slide, TemplateTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { buildThemeSpec, applySlideDesign } from "@/lib/layouts/theme";
@@ -13,7 +13,36 @@ import {
 } from "@/lib/layouts/types";
 import { BACKGROUND_DESIGNS } from "@/lib/backgroundDesigns";
 import { iconSvg } from "@/lib/icons";
+import { getFontGoogleUrl } from "@/lib/fonts";
 import { MiniChart } from "./MiniChart";
+
+const GOOGLE_FONTS_LINK_ID = "df-google-fonts";
+
+// Dynamically loads whichever Google Fonts the current spec actually needs —
+// only when a specific font was chosen via the Design tab's font picker
+// (headingFontId/bodyFontId), never for the plain sans/serif default, which
+// never leaves system/Georgia fonts.
+function useGoogleFonts(headingFontId?: string, bodyFontId?: string) {
+  useEffect(() => {
+    const fontIds = [headingFontId, bodyFontId].filter(
+      (id): id is string => Boolean(id),
+    );
+    if (fontIds.length === 0) return;
+
+    const href = getFontGoogleUrl(fontIds);
+    const existing = document.getElementById(
+      GOOGLE_FONTS_LINK_ID,
+    ) as HTMLLinkElement | null;
+    if (existing?.href === href) return;
+    existing?.remove();
+
+    const link = document.createElement("link");
+    link.id = GOOGLE_FONTS_LINK_ID;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  }, [headingFontId, bodyFontId]);
+}
 
 // ---------------------------------------------------------------------------
 // HTML preview renderer. Consumes the SAME resolved layout specs as the PPTX
@@ -60,6 +89,7 @@ export function SlideView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [baseSpec, slide.slideDesign],
   );
+  useGoogleFonts(spec.headingFontId, spec.bodyFontId);
   const resolved = resolveSlide(slide, {
     index: index ?? slide.orderIndex ?? 0,
     total: total ?? 1,

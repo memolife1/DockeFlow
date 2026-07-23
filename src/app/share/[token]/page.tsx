@@ -104,6 +104,38 @@ export default function SharePage({
 
   return (
     <div className="flex min-h-screen flex-col bg-ink">
+      {/* View-only banner — recipients never see edit controls on this page,
+          but a first-time visitor landing directly on a slide (e.g. from a
+          chat link) should immediately know why nothing here is clickable. */}
+      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-ink px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#9CA3AF"
+            strokeWidth="2"
+            className="shrink-0"
+            aria-hidden="true"
+          >
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span className="truncate text-[13px] text-paper/60">
+            View only · <span className="text-paper/90">{deck.title}</span>
+          </span>
+        </div>
+        <a
+          href="https://www.deckeflow.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-full bg-accent px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-accent-hover"
+        >
+          Create your own →
+        </a>
+      </div>
+
       <header className="flex h-14 shrink-0 items-center justify-between px-4 text-paper">
         <div className="opacity-80">
           <Logo compact />

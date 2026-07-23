@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { FONT_OPTIONS, getFontById } from "@/lib/fonts";
+import { ImageReplacer } from "./ImageReplacer";
 import type {
   BrandLogo,
   LayoutType,
@@ -53,6 +55,9 @@ const LAYOUTS: { value: LayoutType; label: string }[] = [
   { value: "image_two_column", label: "Image — two column" },
   { value: "image_four_grid", label: "Image — four grid" },
   { value: "image_showcase", label: "Image — showcase" },
+  { value: "quote_testimonial", label: "Quote / testimonial" },
+  { value: "data_table", label: "Data table" },
+  { value: "callout_box", label: "Callout box" },
 ];
 
 const stripHash = (hex: string) => hex.replace("#", "").toUpperCase();
@@ -106,6 +111,10 @@ export function Inspector({
   const headlineHex = sd?.headlineColor ?? inkHex;
   const fontFamily = sd?.headingFont ?? overrides?.fontFamily ?? theme.fontFamily;
   const bodyFontFamily = sd?.bodyFont ?? overrides?.bodyFontFamily ?? "sans";
+  const headingFontId =
+    sd?.headingFontId ?? overrides?.headingFontId ?? (fontFamily === "serif" ? "playfair" : "inter");
+  const bodyFontId =
+    sd?.bodyFontId ?? overrides?.bodyFontId ?? (bodyFontFamily === "serif" ? "lora" : "inter");
   const backgroundDesign: BackgroundDesignKey =
     ((sd?.backgroundDesign ?? overrides?.backgroundDesign) as BackgroundDesignKey) ?? "none";
   const backgroundImageUri = sd?.backgroundImageUri ?? overrides?.backgroundImageUri;
@@ -126,6 +135,8 @@ export function Inspector({
         backgroundImageUri: "backgroundImageUri",
         headingFont: "fontFamily",
         bodyFont: "bodyFontFamily",
+        headingFontId: "headingFontId",
+        bodyFontId: "bodyFontId",
       };
       const themePatch: Record<string, string | undefined> = {};
       for (const [k, v] of Object.entries(patch)) {
@@ -256,11 +267,92 @@ export function Inspector({
               </div>
             )}
 
+            {layoutId === "data_table" && (
+              <div className="space-y-2">
+                <span className="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">
+                  Table data
+                </span>
+                <div>
+                  <p className="mb-1 text-[11px] text-ink-muted">Column headers</p>
+                  <div className="flex gap-1.5">
+                    {(slide.tableData?.headers ?? ["Column 1", "Column 2", "Column 3"]).map((h, i) => (
+                      <Input
+                        key={i}
+                        value={h}
+                        placeholder={`Col ${i + 1}`}
+                        onChange={(e) => {
+                          const headers = [
+                            ...(slide.tableData?.headers ?? ["Column 1", "Column 2", "Column 3"]),
+                          ];
+                          headers[i] = e.target.value;
+                          onChange({ tableData: { headers, rows: slide.tableData?.rows ?? [] } });
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] text-ink-muted">Rows</p>
+                  <div className="space-y-1.5">
+                    {(slide.tableData?.rows ?? []).map((row, ri) => (
+                      <div key={ri} className="flex items-start gap-1.5">
+                        <div className="flex flex-1 gap-1.5">
+                          {(slide.tableData?.headers ?? ["", "", ""]).map((_, ci) => (
+                            <Input
+                              key={ci}
+                              value={row[ci] ?? ""}
+                              onChange={(e) => {
+                                const headers = slide.tableData?.headers ?? ["Column 1", "Column 2", "Column 3"];
+                                const rows = (slide.tableData?.rows ?? []).map((r, idx) =>
+                                  idx === ri
+                                    ? Object.assign([...r], { [ci]: e.target.value })
+                                    : r,
+                                );
+                                onChange({ tableData: { headers, rows } });
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const headers = slide.tableData?.headers ?? ["Column 1", "Column 2", "Column 3"];
+                            const rows = (slide.tableData?.rows ?? []).filter((_, idx) => idx !== ri);
+                            onChange({ tableData: { headers, rows } });
+                          }}
+                          className="mt-2.5 shrink-0 text-ink-faint hover:text-red-600"
+                          aria-label={`Remove row ${ri + 1}`}
+                        >
+                          <IconTrash className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {(!slide.tableData?.rows || slide.tableData.rows.length === 0) && (
+                      <p className="text-[12px] italic text-ink-faint">No rows yet.</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const headers = slide.tableData?.headers ?? ["Column 1", "Column 2", "Column 3"];
+                    const rows = [...(slide.tableData?.rows ?? []), headers.map(() => "")];
+                    onChange({ tableData: { headers, rows } });
+                  }}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-accent hover:text-accent-hover"
+                >
+                  <IconPlus className="h-3.5 w-3.5" /> Add row
+                </button>
+              </div>
+            )}
+
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[13px] font-medium text-ink-soft">
                   {slide.layoutType === "title" || slide.layoutType === "section"
                     ? "Subtitle"
+                    : layoutId === "quote_testimonial"
+                    ? "Attribution (name/title, then company)"
+                    : layoutId === "callout_box"
+                    ? "Eyebrow label, then supporting text"
                     : "Points"}
                 </span>
                 <button
@@ -296,46 +388,43 @@ export function Inspector({
             {IMAGE_LAYOUTS.has(layoutId) && (
               <Field label="Slide photo">
                 <div className="space-y-2">
-                  {slide.imageUrl && (
-                    <div className="h-24 w-full overflow-hidden rounded-lg border border-line">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={slide.imageUrl}
-                        alt="Slide photo"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
+                  <ImageReplacer
+                    currentUrl={slide.imageUrl}
+                    onSelect={(url) => onChange({ imageUrl: url || undefined })}
+                  />
                   {userImages.length > 0 && (
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {userImages.slice(0, 6).map((img) => (
-                        <button
-                          key={img.id}
-                          onClick={async () => {
-                            const src = img.dataUri || img.fileUrl;
-                            const cropped = src ? await cropDataUriTo16x9(src) : src;
-                            onChange({ imageUrl: cropped });
-                          }}
-                          className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={img.dataUri || img.fileUrl}
-                            alt={img.fileName}
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    <>
+                      <p className="text-[11px] font-medium text-ink-muted">Your photos</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {userImages.slice(0, 6).map((img) => (
+                          <button
+                            key={img.id}
+                            onClick={async () => {
+                              const src = img.dataUri || img.fileUrl;
+                              const cropped = src ? await cropDataUriTo16x9(src) : src;
+                              onChange({ imageUrl: cropped });
+                            }}
+                            className="aspect-video overflow-hidden rounded border-2 border-transparent hover:border-accent"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img.dataUri || img.fileUrl}
+                              alt={img.fileName}
+                              className="h-full w-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
                   <Link
                     href="/images"
                     className="inline-block text-[13px] text-accent hover:text-accent-hover"
                   >
-                    {userImages.length > 0 ? "View all photos →" : "Upload photos →"}
+                    {userImages.length > 0 ? "View all photos →" : "Upload your own photos →"}
                   </Link>
                   <p className="text-[11px] text-ink-faint">
-                    Images are automatically cropped to 16:9 to fit slide dimensions.
+                    Uploaded photos are automatically cropped to 16:9; Pexels photos fill the frame.
                   </p>
                 </div>
               </Field>
@@ -376,14 +465,14 @@ export function Inspector({
           surfaceHex={surfaceHex}
           inkHex={inkHex}
           headlineHex={headlineHex}
-          fontFamily={fontFamily}
-          bodyFontFamily={bodyFontFamily}
+          headingFontId={headingFontId}
+          bodyFontId={bodyFontId}
           backgroundDesign={backgroundDesign}
           backgroundImageUri={backgroundImageUri}
           decorationStyle={decorationStyle}
           onSetColor={(key, hex) => applyDesign({ [key]: stripHash(hex) })}
-          onSetFontFamily={(f) => applyDesign({ headingFont: f })}
-          onSetBodyFontFamily={(f) => applyDesign({ bodyFont: f })}
+          onSetHeadingFontId={(id) => applyDesign({ headingFontId: id })}
+          onSetBodyFontId={(id) => applyDesign({ bodyFontId: id })}
           onResetColors={resetDesign}
           onSetBackgroundDesign={(d) => applyDesign({ backgroundDesign: d })}
           onSetBackgroundImage={(dataUri) => applyDesign({ backgroundImageUri: dataUri })}
@@ -392,6 +481,89 @@ export function Inspector({
           logoWatermark={presentation.logoWatermark}
           onSetLogoWatermark={(w) => onUpdatePresentation({ logoWatermark: w })}
         />
+      )}
+    </div>
+  );
+}
+
+function FontPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (fontId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = getFontById(value) ?? FONT_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const filtered = FONT_OPTIONS.filter((f) =>
+    f.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <div ref={rootRef} className="relative">
+      <p className="mb-1.5 text-[12px] text-ink-soft">{label}</p>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink hover:border-line-strong"
+        style={{ fontFamily: current.cssStack }}
+      >
+        <span>{current.name}</span>
+        <span className="text-ink-faint">▾</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-line bg-paper shadow-pop">
+          <div className="border-b border-line p-2">
+            <Input
+              autoFocus
+              placeholder="Search fonts…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="thin-scroll max-h-48 overflow-y-auto">
+            {filtered.map((font) => (
+              <button
+                key={font.id}
+                type="button"
+                onClick={() => {
+                  onChange(font.id);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between px-3 py-2 text-left text-[13px] transition-colors hover:bg-accent-soft",
+                  font.id === current.id ? "bg-accent-soft text-accent" : "text-ink",
+                )}
+                style={{ fontFamily: font.cssStack }}
+              >
+                <span>{font.name}</span>
+                <span className="text-[10px] uppercase text-ink-faint">{font.category}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-center text-[12px] text-ink-faint">No fonts match.</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -453,14 +625,14 @@ function DesignTab({
   surfaceHex,
   inkHex,
   headlineHex,
-  fontFamily,
-  bodyFontFamily,
+  headingFontId,
+  bodyFontId,
   backgroundDesign,
   backgroundImageUri,
   decorationStyle,
   onSetColor,
-  onSetFontFamily,
-  onSetBodyFontFamily,
+  onSetHeadingFontId,
+  onSetBodyFontId,
   onResetColors,
   onSetBackgroundDesign,
   onSetBackgroundImage,
@@ -476,14 +648,14 @@ function DesignTab({
   surfaceHex: string;
   inkHex: string;
   headlineHex: string;
-  fontFamily: "sans" | "serif";
-  bodyFontFamily: "sans" | "serif";
+  headingFontId: string;
+  bodyFontId: string;
   backgroundDesign: BackgroundDesignKey;
   backgroundImageUri?: string;
   decorationStyle: NonNullable<SlideDesign["decorationStyle"]>;
   onSetColor: (key: keyof SlideDesign, hex: string) => void;
-  onSetFontFamily: (f: "sans" | "serif") => void;
-  onSetBodyFontFamily: (f: "sans" | "serif") => void;
+  onSetHeadingFontId: (id: string) => void;
+  onSetBodyFontId: (id: string) => void;
   onResetColors: () => void;
   onSetBackgroundDesign: (d: BackgroundDesignKey) => void;
   onSetBackgroundImage: (dataUri: string | undefined) => void;
@@ -619,44 +791,8 @@ function DesignTab({
           Typography
         </p>
         <div className="space-y-3">
-          <div>
-            <p className="mb-1.5 text-[12px] text-ink-soft">Heading font</p>
-            <div className="flex gap-2">
-              {(["sans", "serif"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => onSetFontFamily(f)}
-                  className={cn(
-                    "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
-                    fontFamily === f
-                      ? "border-accent bg-accent-soft text-accent"
-                      : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
-                  )}
-                >
-                  {f === "sans" ? "Sans-serif" : "Serif"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1.5 text-[12px] text-ink-soft">Body font</p>
-            <div className="flex gap-2">
-              {(["sans", "serif"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => onSetBodyFontFamily(f)}
-                  className={cn(
-                    "flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium capitalize transition-colors",
-                    bodyFontFamily === f
-                      ? "border-accent bg-accent-soft text-accent"
-                      : "border-line text-ink-muted hover:border-line-strong hover:text-ink",
-                  )}
-                >
-                  {f === "sans" ? "Sans-serif" : "Serif"}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FontPicker label="Heading font" value={headingFontId} onChange={onSetHeadingFontId} />
+          <FontPicker label="Body font" value={bodyFontId} onChange={onSetBodyFontId} />
         </div>
       </div>
 

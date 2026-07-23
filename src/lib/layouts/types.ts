@@ -39,6 +39,10 @@ export interface ThemeSpec {
   fontBody: string;
   fontHeadCss: string; // CSS font-family stacks for the preview
   fontBodyCss: string;
+  // Google Font ids (lib/fonts.ts) currently in effect, if a specific font
+  // was chosen — used only to know which webfonts to load in the preview.
+  headingFontId?: string;
+  bodyFontId?: string;
   chartPalette: string[]; // hex list (no #)
   logoDataUri?: string; // brand logo (Phase 4)
   brandName?: string;

@@ -40,7 +40,10 @@ export type LayoutId =
   | "image_full_bleed"
   | "image_two_column"
   | "image_four_grid"
-  | "image_showcase";
+  | "image_showcase"
+  | "quote_testimonial"
+  | "data_table"
+  | "callout_box";
 
 // Legacy layout names (existing decks). Mapped to the nearest LayoutId at
 // render time — see resolveLayoutId() in lib/layouts/specs.ts.
@@ -140,6 +143,10 @@ export interface Presentation {
     backgroundDesign?: string; // BackgroundDesignKey from lib/backgroundDesigns
     fontFamily?: "sans" | "serif"; // heading font
     bodyFontFamily?: "sans" | "serif"; // body font, independent of heading
+    // A specific Google Font id from lib/fonts.ts — a deliberate full
+    // override that wins over fontFamily/bodyFontFamily above when set.
+    headingFontId?: string;
+    bodyFontId?: string;
     backgroundImageUri?: string; // full-bleed background photo, data URI
     decorationStyle?: "bubbles" | "geometric" | "lines" | "corners" | "minimal" | "none";
   };
@@ -164,6 +171,10 @@ export interface SlideDesign {
   backgroundImageUri?: string; // base64 data URI
   headingFont?: "sans" | "serif";
   bodyFont?: "sans" | "serif";
+  // A specific Google Font id from lib/fonts.ts — wins over headingFont/
+  // bodyFont above when set.
+  headingFontId?: string;
+  bodyFontId?: string;
   decorationStyle?: "bubbles" | "geometric" | "lines" | "corners" | "minimal" | "none";
 }
 
@@ -186,6 +197,7 @@ export interface Slide {
   funnel?: FunnelStage[];
   swot?: SwotContent;
   team?: TeamMember[];
+  tableData?: { headers: string[]; rows: string[][] }; // present on data_table slides
   imageQuery?: string; // stock-photo search for image zones
   imageUrl?: string; // resolved image URL (set at generation time)
   imageQueries?: string[]; // multi-image layouts (up to 4 zones)

@@ -39,6 +39,9 @@ const LAYOUT_IDS: LayoutId[] = [
   "image_two_column",
   "image_four_grid",
   "image_showcase",
+  "quote_testimonial",
+  "data_table",
+  "callout_box",
 ];
 
 export function isLayoutId(v: string): v is LayoutId {
@@ -1094,6 +1097,118 @@ const imageShowcase: LayoutFn = (s, ctx) => {
   return { background: "dark", elements: els };
 };
 
+// Large centered quote with attribution — client testimonials, expert
+// opinions, or a single impactful statement. Attribution: content[0] is
+// "Name, Title", content[1] is the company/context line.
+const quoteTestimonial: LayoutFn = (s, ctx) => {
+  const els: LayoutEl[] = [
+    txt(M, 0.55, W - M * 2, 1.3, "“", 100, "primaryTint", {
+      bold: true,
+      font: "head",
+      align: "left",
+    }),
+    titleText(ctx, M + 0.5, 1.7, W - M * 2 - 1, 3.0, s.title, 27, "textBody", {
+      italic: true,
+      font: "head",
+      align: "center",
+      valign: "middle",
+      lineSpacing: 1.4,
+      shrink: true,
+      maxLines: 6,
+    }),
+    box(W / 2 - 1.0, 5.05, 2.0, 0.05, "primary"),
+    txt(M, 5.3, W - M * 2, 0.5, s.content[0] ?? "", 14, "textBody", {
+      align: "center",
+      bold: true,
+    }),
+    txt(M, 5.75, W - M * 2, 0.4, s.content[1] ?? "", 12, "textMuted", {
+      align: "center",
+    }),
+  ];
+  return { background: "surface", elements: [...els, ...pageFooter(ctx)] };
+};
+
+// Rows and columns of tabular data — specs, pricing comparisons, event
+// schedules. slide.tableData.headers/.rows; falls back to generic column
+// headers so the layout never renders empty.
+const dataTable: LayoutFn = (s, ctx) => {
+  const headers = s.tableData?.headers?.length
+    ? s.tableData.headers.slice(0, 5)
+    : ["Column 1", "Column 2", "Column 3"];
+  const rows = (s.tableData?.rows ?? []).slice(0, 6);
+  const colW = (W - M * 2) / headers.length;
+  const rowH = 0.62;
+  const tableY = 1.7;
+  const els: LayoutEl[] = [
+    titleText(ctx, M, 0.6, W - M * 2, 0.9, s.title, 26, "textBody", {
+      bold: true,
+      font: "head",
+      shrink: true,
+      maxLines: 2,
+    }),
+  ];
+  headers.forEach((h, i) => {
+    els.push(box(M + i * colW, tableY, colW, rowH, "primary"));
+    els.push(
+      txt(M + i * colW + 0.18, tableY, colW - 0.36, rowH, h, 13, "textOnDark", {
+        bold: true,
+        valign: "middle",
+        shrink: true,
+        maxLines: 1,
+      }),
+    );
+  });
+  rows.forEach((row, ri) => {
+    const y = tableY + rowH + ri * rowH;
+    const bg: ColorRole = ri % 2 === 0 ? "surface" : "neutralTint";
+    headers.forEach((_, ci) => {
+      els.push(
+        box(M + ci * colW, y, colW, rowH, bg, {
+          line: { color: "neutralTint", width: 0.75 },
+        }),
+      );
+      els.push(
+        txt(M + ci * colW + 0.18, y, colW - 0.36, rowH, row[ci] ?? "", 12, "textBody", {
+          valign: "middle",
+          shrink: true,
+          maxLines: 1,
+        }),
+      );
+    });
+  });
+  return { background: "surface", elements: [...els, ...pageFooter(ctx)] };
+};
+
+// Single big highlighted message — key decisions, critical warnings, the one
+// thing to remember. content[0] is the eyebrow label (default "KEY
+// TAKEAWAY"), content[1] is optional supporting text below the box.
+const calloutBox: LayoutFn = (s, ctx) => {
+  const eyebrow = (s.content[0] || "Key takeaway").toUpperCase();
+  const sub = s.content[1] ?? "";
+  const els: LayoutEl[] = [
+    txt(M, 0.6, W - M * 2, 0.45, eyebrow, 12, "primary", {
+      bold: true,
+      align: "center",
+      letterSpacing: 0.08,
+    }),
+    card(M, 1.3, W - M * 2, 4.2, "primary", { radius: 0.14 }),
+    titleText(ctx, M + 0.7, 1.9, W - M * 2 - 1.4, 3.0, s.title, 32, "textOnDark", {
+      bold: true,
+      font: "head",
+      align: "center",
+      valign: "middle",
+      lineSpacing: 1.2,
+      shrink: true,
+      maxLines: 4,
+    }),
+    txt(M, 5.75, W - M * 2, 0.5, sub, 13, "textMuted", {
+      align: "center",
+      italic: true,
+    }),
+  ];
+  return { background: "surface", elements: [...els, ...pageFooter(ctx)] };
+};
+
 const LAYOUTS: Record<LayoutId, LayoutFn> = {
   title_hero: titleHero,
   title_split: titleSplit,
@@ -1115,6 +1230,9 @@ const LAYOUTS: Record<LayoutId, LayoutFn> = {
   image_two_column: imageTwoColumn,
   image_four_grid: imageFourGrid,
   image_showcase: imageShowcase,
+  quote_testimonial: quoteTestimonial,
+  data_table: dataTable,
+  callout_box: calloutBox,
 };
 
 export function resolveSlide(slide: Slide, ctx: ResolveCtx): ResolvedSlide {

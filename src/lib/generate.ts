@@ -46,6 +46,7 @@ export interface DraftSlide {
   funnel?: unknown; // FunnelStage[] once normalized
   swot?: unknown; // SwotContent once normalized
   team?: unknown; // TeamMember[] once normalized
+  tableData?: unknown; // { headers: string[]; rows: string[][] } once normalized
   imageQuery?: string;
   imageUrl?: string;
   imageQueries?: unknown; // string[] once normalized
@@ -638,6 +639,7 @@ export function draftsToSlides(
     funnel: normalizeFunnel(d.funnel),
     swot: normalizeSwot(d.swot),
     team: normalizeTeam(d.team),
+    tableData: normalizeTableData(d.tableData),
     imageQuery: d.imageQuery,
     imageUrl: d.imageUrl,
     imageQueries: Array.isArray(d.imageQueries)
@@ -701,6 +703,24 @@ export function normalizeSwot(v: unknown): SwotContent | undefined {
   };
   const hasAny = out.s.length || out.w.length || out.o.length || out.t.length;
   return hasAny ? out : undefined;
+}
+
+export function normalizeTableData(
+  v: unknown,
+): { headers: string[]; rows: string[][] } | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as { headers?: unknown; rows?: unknown };
+  const headers = Array.isArray(o.headers)
+    ? o.headers.map(String).filter(Boolean).slice(0, 5)
+    : [];
+  if (headers.length === 0) return undefined;
+  const rows = Array.isArray(o.rows)
+    ? o.rows
+        .filter((r): r is unknown[] => Array.isArray(r))
+        .map((r) => headers.map((_, i) => str(r[i])))
+        .slice(0, 6)
+    : [];
+  return { headers, rows };
 }
 
 export function normalizeTeam(v: unknown): TeamMember[] | undefined {
